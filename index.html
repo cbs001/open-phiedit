@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+
+</head>
+
+<body>
+	<div style="display:flex">
+		<div class="menu">
+			文件
+			<div>
+				<div id="m-load">加载</div>
+				<div id="m-save">保存到本地（rpe 格式）</div>
+				<div id="m-save2">保存到本地（纯文本多 K 格式）</div>
+			</div>
+		</div>
+		<div class="menu">
+			填充
+			<div>
+				<div id="fill-notes">曲线音符</div>
+			</div>
+		</div>
+		<div class="menu">
+			编辑
+			<div>
+				<div id="m-addline">添加判定线</div>
+				<div id="m-changename">更改判定线名</div>
+				<div id="m-event">打开/关闭事件</div>
+			</div>
+		</div>
+	</div>
+	判定线：
+	<select id="lines" style="width: 30%">
+	</select>
+	<div style="display:flex">
+		<div style="border: 1px solid black; width: 75%;">
+			<canvas id="cvs" width="1600px" height="900px" style="width: 100%;">
+			</canvas>
+		</div>
+		<div style="width: 25%; display:none" id="edit">
+			X坐标：<input id="edit-x"></input><br>
+			起始时间：<input id="edit-time"></input><br>
+			结束时间：<input id="edit-time2"></input><br>
+			朝向：<select id="edit-d">
+				<option value="1">Up</option>
+				<option value="2">Down</option>
+			</select>
+			<br>
+			真值：<select id="edit-t">
+					<option value="0">普通音符</option>
+					<option value="1">假音符</option>
+			</select>
+		</div>
+		<div style="width: 25%; display:none" id="edit2">
+			缓动类型：<select id="edit2-ease">
+				<option value="1">1 linear</option>
+				<option value="2">2 sin out</option>
+				<option value="3">3 sin in</option>
+				<option value="4">4 quad out</option>
+				<option value="5">5 quad in</option>
+				<option value="6">6 sin io</option>
+				<option value="7">7 quad io</option>
+				<option value="8">8 cubic out</option>
+				<option value="9">9 cubic in</option>
+				<option value="10">10 quart out</option>
+				<option value="11">11 quart in</option>
+				<option value="12">12 cubic io</option>
+				<option value="13">13 quart io</option>
+				<option value="14">14 quint out</option>
+				<option value="15">15 quint in</option>
+				<option value="16">16 expo out</option>
+				<option value="17">17 expo in</option>
+				<option value="18">18 circ out</option>
+				<option value="19">19 circ in</option>
+				<option value="20">20 back out</option>
+				<option value="21">21 back in</option>
+				<option value="22">22 circ in</option>
+				<option value="23">23 back io</option>
+				<option value="24">24 elastic out</option>
+				<option value="25">25 elastic in</option>
+				<option value="26">26 bounce out</option>
+				<option value="27">27 bounce in</option>
+				<option value="28">28 bounce io</option>
+			</select>
+			<br>
+			起始时间：<input id="edit2-time"></input><br>
+			结束时间：<input id="edit2-time2"></input><br>
+			起始值：<input id="edit2-st"></input><br>
+			结束值：<input id="edit2-ed"></input><br>
+		</div>
+	</div>
+	基本信息设置栏：
+	<div style="display:flex">
+		bpm：
+		<input value="80" id="s-bpm" style="width: 100px">
+		竖向格子数：
+		<input value="1" id="s-shu" style="width: 100px">
+		横向格子数：
+		<input value="1" id="s-heng" style="width: 100px">
+	</div>
+	<style>
+		.menu {
+			padding: 10px;
+			border-radius: 3px;
+			background: #EEE;
+		}
+
+		.menu>div {
+			display: none;
+			position: absolute;
+			background: #EEE;
+			padding: 10px;
+			border-radius: 3px;
+		}
+
+		.menu>div>div {
+			margin-top: 10px;
+		}
+
+		.menu:hover>div {
+			display: block;
+		}
+	</style>
+	<script src="data.js"></script>
+	<script src="main.js"></script>
+</body>
+
+</html>
