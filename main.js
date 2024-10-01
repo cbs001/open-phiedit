@@ -4,6 +4,7 @@ window.$ = (e) => {
 	return document.getElementById(e);
 }
 var ctx = document.getElementById("cvs").getContext("2d");
+ctx.font = "30px Arial";
 var imgs = [new Image(), new Image(), new Image(), new Image()];
 const dpr = window.devicePixelRatio;
 imgs[0].src = "Tap.png";
@@ -12,7 +13,7 @@ imgs[2].src = "Flick.png";
 imgs[3].src = "Drag.png";
 var n = 114514, heng = 4, shu = 7, hi = 200; // 小节数，横着分几格，竖着分几格，每小节高度
 var selection = []; // 当前选中的音符
-var selection_ev = []; // 当前选中的事件
+var selection_ev = []; // 当前选中的事件，格式：[编号，类型]
 var put_hold_st = null, put_hold_x; // 放置 Hold 音符用
 var put_ev_st = null, put_ev_x; // 放置事件用
 var control_down = 0; // ctrl 键是否按下
@@ -42,11 +43,8 @@ function isBeat(e) {
 	return e.length == 3 && !isNaN(e[0]) && !isNaN(e[1]) && !isNaN(e[2]);
 }
 function cmparray(a, b) {
-	if (!Array.isArray(a) || !Array.isArray(b) || a.length != b.length) return false;
-	for (let i = 0; i < a.length; i++)
-		if (a[i] != b[i])
-			return false;
-	return true;
+	// Array.isArray(a) && Array.isArray(b) && 
+	return a.length == b.length && a.every((v, i) => v == b[i]);
 }
 // 音符管理
 // ============================================================================================
@@ -169,7 +167,6 @@ var notecontrol = {
 
 		let x = (tx - x1) / (x2 - x1) * 1350 - 675;
 		let y = (y2 - ty) / (y2 - y1) * 900 - 450;
-		// console.log(x, y);
 		y -= rdelta;
 
 		if (y < -450) return;
@@ -177,7 +174,6 @@ var notecontrol = {
 		let a = Math.floor((y + 450) / hi);
 		let b = Math.round((y + 450) % hi / (hi / heng));
 
-		console.log(a, b);
 		return [Math.round((x - 675) / (1350 / _shu)) * (1350 / _shu) + 675, [a, b, heng]];
 	},
 	put: (x1, y1, x2, y2, tx, ty, type) => {
@@ -192,7 +188,6 @@ var notecontrol = {
 		let tx = x1 + (x2 - x1) * ((x + 675) / 1350);
 		// 长条下面的 y（开始触发），上面的 y（结束触发），tyst > tyed
 		let tyst = y2 - ((yst + 450) / 900) * (y2 - y1), tyed = y2 - ((yed + 450) / 900) * (y2 - y1);
-		console.log(x1, x2, tx, tyst, tyed, mousedata.x, mousedata.y);
 		let d = 0;
 		if (mousedata.y > tyed && mousedata.y < tyst) {
 			d = (tx - mousedata.x) * (tx - mousedata.x);
@@ -220,11 +215,9 @@ var notecontrol = {
 				let yst = -450 + hi * (notes[i].startTime[0] + notes[i].startTime[1] / notes[i].startTime[2]);
 				let yed = -450 + hi * (notes[i].endTime[0] + notes[i].endTime[1] / notes[i].endTime[2]);
 				let d = this.hold_calc(notes[i].positionX, yst, yed, x1, y1, x2, y2);
-				console.log(i, d);
 				if (d < minn) minn = d, ans = i; // 选中音符
 			}
 		}
-		console.log(minn);
 		return ans;
 	},
 	edit: () => { // 显示编辑面板
@@ -276,7 +269,7 @@ var notecontrol = {
 		});
 		$("edit-t").addEventListener("change", () => {
 			if (selection.length > 0) {
-				for (let i = 0; i < selection.length; i++) notes[selection[i]].isFake = Number($("edit-d").value);
+				for (let i = 0; i < selection.length; i++) notes[selection[i]].isFake = Number($("edit-t").value);
 			}
 		});
 	}
@@ -341,7 +334,6 @@ var eventcontrol = {
 				let yst = -450 + hi * (ev[i].startTime[0] + ev[i].startTime[1] / ev[i].startTime[2]);
 				let yed = -450 + hi * (ev[i].endTime[0] + ev[i].endTime[1] / ev[i].endTime[2]);
 				let d = notecontrol.hold_calc(x, yst, yed, x1, y1, x2, y2);
-				console.log(x, type, d);
 				if (d < minn) minn = d, ans = i, anst = type; // 选中音符
 			}
 			x += 337.5;
@@ -440,6 +432,17 @@ settingscontorl.init();
 var rdelta = 0;
 var r_last_lines_length;
 function main() {
+	function render_text(x, y1, y2) { // 绘制小节的数字
+		ctx.fillStyle = "#ffffff";
+		ctx.textBaseline = "middle"; // 垂直居中
+		for (let i = Math.floor(Math.max(-rdelta / hi, 0)); i < n; i++) {
+			let y = (i * hi) - 450;
+			y += rdelta;
+			if (y > 500) continue;
+			let ty = y2 - ((y + 450) / 900) * (y2 - y1); // 绝对坐标
+			ctx.fillText(i, x, ty);
+		}
+	}
 	// 刷新判定线列表
 	if (all_data.judgeLineList.length != r_last_lines_length) {
 		r_last_lines_length = all_data.judgeLineList.length;
@@ -456,7 +459,11 @@ function main() {
 	ctx.fillStyle = "#000000";
 	ctx.fillRect(0, 0, 1600, 900);
 	notecontrol.render(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
-	if (edit_event) eventcontrol.render(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
+	render_text(nrr.x2 + 10, nrr.y1, nrr.y2);
+	if (edit_event) {
+		eventcontrol.render(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
+		render_text(evrr.x2 + 10, evrr.y1, evrr.y2);
+	}
 }
 // 操作
 // ============================================================================================
@@ -482,7 +489,7 @@ document.addEventListener('keydown', function (event) {
 	if (event.key == "Control") control_down = 1;
 	if (mousedata.in == 0) return;
 	event.key = event.key.toLowerCase();
-	console.log(event.key);
+	console.log("按键 " + event.key);
 	if (event.key == "q") {
 		notecontrol.put(nrr.x1, nrr.y1, nrr.x2, nrr.y2, mousedata.x, mousedata.y, 1);
 	} else if (event.key == "e") {
@@ -507,13 +514,21 @@ document.addEventListener('keydown', function (event) {
 				put_hold_x = tmp[0], put_hold_st = tmp[1];
 			}
 		}
-
 	} else if (event.key == "Delete") {
-		selection.sort((a, b) => a - b)
+		// 删除音符：
+		selection.sort((a, b) => a - b);
 		for (let i = 0; i < selection.length; i++) {
 			notes.splice(selection[i] - i, 1);
 		}
 		selection = [];
+		// 删除事件：
+		for (let i = 0; i < selection_ev.length; i++) {
+			evs[evs_layer][selection_ev[i][1]].splice(selection_ev[i][0], 1);
+			for (let j = i + 1; j < selection_ev.length; j++) {
+				if (selection_ev[i][1] == selection_ev[j][1]) selection_ev[j][0]--;
+			}
+		}
+		selection_ev = [];
 	}
 });
 document.addEventListener('keyup', function (event) {
@@ -525,7 +540,7 @@ $("cvs").addEventListener('click', function () {
 		if (p == undefined) return;
 		selection = [];
 		if (control_down == 0) {
-			if (cmparray(selection_ev[0], p) && selection_ev.length == 1) selection_ev = [], notecontrol.hedit();
+			if (selection_ev.length == 1 && cmparray(selection_ev[0], p)) selection_ev = [], notecontrol.hedit();
 			else selection_ev = [p], eventcontrol.edit(), notecontrol.hedit();
 		} else {
 			if (selection_ev.includes(p)) {
@@ -552,6 +567,7 @@ $("cvs").addEventListener('click', function () {
 });
 $("lines").addEventListener('change', () => {
 	notes = all_data.judgeLineList[$("lines").value].notes;
+	evs = all_data.judgeLineList[$("lines").value].eventLayers;
 	selection = [];
 });
 $("m-addline").addEventListener('click', () => {
