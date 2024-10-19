@@ -60,10 +60,10 @@ function new_judge_line() {
 						"easingLeft": 0.0,
 						"easingRight": 1.0,
 						"easingType": 1,
-						"end": 255,
+						"end": 0,
 						"endTime": [1, 0, 1],
 						"linkgroup": 0,
-						"start": 255,
+						"start": 0,
 						"startTime": [0, 0, 1]
 					}
 				],
@@ -88,10 +88,10 @@ function new_judge_line() {
 						"easingLeft": 0.0,
 						"easingRight": 1.0,
 						"easingType": 1,
-						"end": -270.0,
+						"end": 0.0,
 						"endTime": [1, 0, 1],
 						"linkgroup": 0,
-						"start": -270.0,
+						"start": 0.0,
 						"startTime": [0, 0, 1]
 					}
 				],
@@ -195,7 +195,7 @@ function new_judge_line() {
 
 // 加载与保存
 // ============================================================================================
-function FileDownload(content, filename) {
+async function FileDownload(content, filename) {
 	const eleLink = document.createElement('a');
 	eleLink.download = filename;
 	eleLink.style.display = 'none';
@@ -218,6 +218,7 @@ $("m-load").addEventListener('click', () => {
 		if (files.length) {
 			var reader = new FileReader();
 			reader.onload = function (e) {
+				// console.log(e);
 				try {
 					all_data = JSON.parse(e.target.result);
 				} catch (error) {
@@ -244,6 +245,7 @@ $("m-load").addEventListener('click', () => {
 				notes，evs 都是 all_data 中的引用
 				*/
 				notes = all_data.judgeLineList[0].notes;
+				notecontrol.update();
 				evs = all_data.judgeLineList[0].eventLayers;
 				$("lines").value = 0;
 				selection = [];
@@ -254,32 +256,44 @@ $("m-load").addEventListener('click', () => {
 	};
 });
 $("m-save").addEventListener('click', () => {
-	for (let i = 0; i < all_data.judgeLineList.length; i++) {
-		all_data.judgeLineList[i].numOfNotes = all_data.judgeLineList[i].notes.length;
+	if (in_download == 0) {
+		in_download = 1;
+		$("downloading").style.display = "block";
+		for (let i = 0; i < all_data.judgeLineList.length; i++) {
+			all_data.judgeLineList[i].numOfNotes = all_data.judgeLineList[i].notes.length;
+		}
+		FileDownload(JSON.stringify(all_data), "chart.json");
+		in_download = 0;
+		$("downloading").style.display = "none";
 	}
-	FileDownload(JSON.stringify(all_data), "chart.json")
 });
 $("m-save2").addEventListener('click', () => {
-	let n = 0, que = [];
-	for (let i = 0; i < all_data.judgeLineList.length; i++) {
-		n += all_data.judgeLineList[i].notes.length;
-	}
-	for (let i = 0; i < all_data.judgeLineList.length; i++) {
-		for (let j = 0; j < all_data.judgeLineList[i].notes.length; j++) {
-			let tmp = all_data.judgeLineList[i].notes[j];
-			let a = {};
-			if (tmp.type == 1 || tmp.type == 3) a.type = 1;
-			else if (tmp.type == 4) a.type = 2;
-			else a.type = 3;
-			a.st = Math.round(((tmp.startTime[0] + tmp.startTime[1] / tmp.startTime[2]) / (bpm / 60)) * 66.6);
-			a.x = Math.round((tmp.positionX + 675) / (1350 / shu)) + 1;
-			a.speed = 50;
-			a.ed = Math.round(((tmp.endTime[0] + tmp.endTime[1] / tmp.endTime[2]) / (bpm / 60)) * 66.6);
-			que.push(a);
+	if (in_download == 0) {
+		in_download = 1;
+		$("downloading").style.display = "block";
+		let n = 0, que = [];
+		for (let i = 0; i < all_data.judgeLineList.length; i++) {
+			n += all_data.judgeLineList[i].notes.length;
 		}
+		for (let i = 0; i < all_data.judgeLineList.length; i++) {
+			for (let j = 0; j < all_data.judgeLineList[i].notes.length; j++) {
+				let tmp = all_data.judgeLineList[i].notes[j];
+				let a = {};
+				if (tmp.type == 1 || tmp.type == 3) a.type = 1;
+				else if (tmp.type == 4) a.type = 2;
+				else a.type = 3;
+				a.st = Math.round(((tmp.startTime[0] + tmp.startTime[1] / tmp.startTime[2]) / (bpm / 60)) * 66.6);
+				a.x = Math.round((tmp.positionX + 675) / (1350 / shu)) + 1;
+				a.speed = 50;
+				a.ed = Math.round(((tmp.endTime[0] + tmp.endTime[1] / tmp.endTime[2]) / (bpm / 60)) * 66.6);
+				que.push(a);
+			}
+		}
+		que.sort((a, b) => a.st - b.st);
+		let str = n + "\n";
+		for (let i = 0; i < que.length; i++) str += que[i].type + " " + que[i].st + " " + que[i].speed + (que[i].type == 3 ? " " + (que[i].ed - que[i].st) : "") + " " + que[i].x + "\n";
+		FileDownload(str, "chart.que");
+		in_download = 0;
+		$("downloading").style.display = "none";
 	}
-	que.sort((a, b) => a.st - b.st);
-	let str = n + "\n";
-	for (let i = 0; i < que.length; i++) str += que[i].type + " " + que[i].st + " " + que[i].speed + (que[i].type == 3 ? " " + (que[i].ed - que[i].st) : "") + " " + que[i].x + "\n";
-	FileDownload(str, "chart.que");
 });
