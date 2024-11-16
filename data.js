@@ -249,7 +249,7 @@ $("m-load").addEventListener('click', () => {
 				evs = all_data.judgeLineList[0].eventLayers;
 				$("lines").value = 0;
 				selection = [];
-				settingscontorl.load(); // 加载基本设置
+				settingscontrol.load(); // 加载基本设置
 			};
 			reader.readAsText(files[0]);
 		}

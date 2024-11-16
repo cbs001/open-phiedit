@@ -1,7 +1,8 @@
 // 主题色
 const color = {
-	"line": "#E3EDCD",
+	"line": "#9fff95CC",
 	"background": "#000",
+	"background2": "#222",
 	"text": "#FFF",
 	"evu": "#ffef5b96",
 	"evd": "#11fbbf96"
@@ -11,15 +12,23 @@ const color = {
 window.$ = (e) => {
 	return document.getElementById(e);
 }
+var mode = "computer";
+/*
+mode 变量详解
+"computer": 正常的电脑操作，按下键盘，在鼠标的位置放音符
+"q": 手机操作，点击屏幕时放下 Tap（"w""e" 同理）
+"r": 手机操作，滑动屏幕时放下 Hold
+*/
+var playing = 0;
 var ctx = document.getElementById("cvs").getContext("2d");
 ctx.font = "30px Arial";
 ctx.textBaseline = "middle"; // 文字垂直居中
 var imgs = [new Image(), new Image(), new Image(), new Image()];
 const dpr = window.devicePixelRatio;
-imgs[0].src = "Tap.png";
-imgs[1].src = "Hold.png";
-imgs[2].src = "Flick.png";
-imgs[3].src = "Drag.png";
+imgs[0].src = "img/Tap.png";
+imgs[1].src = "img/Hold.png";
+imgs[2].src = "img/Flick.png";
+imgs[3].src = "img/Drag.png";
 var n = 114514, heng = 4, shu = 7, hi = 200; // 小节数，横着分几格，竖着分几格，每小节高度
 var selection = []; // 当前选中的音符
 var selection_ev = []; // 当前选中的事件，格式：[编号，类型]
@@ -105,10 +114,10 @@ var notecontrol = {
 	put_note，select_note 等函数同理
 	*/
 	render_line: (x1, y1, x2, y2, _shu = shu) => {
-		ctx.strokeStyle = "#E3EDCD";
+		ctx.strokeStyle = color.line;
 		for (let i = Math.floor(Math.max(-rdelta / hi, 0)); i < n; i++) {
 			for (let j = 0; j < heng; j++) {
-				ctx.lineWidth = (j == 0 ? 5 : 1);
+				ctx.lineWidth = (j == 0 ? 4 : 1);
 				let y = (i * hi + (j / heng) * hi) - 450;
 				y += rdelta;
 				if (y > 450) break;
@@ -120,9 +129,9 @@ var notecontrol = {
 				ctx.stroke();
 			}
 		}
-		ctx.lineWidth = 2;
+		ctx.lineWidth = 1;
 		for (let j = 0; j <= _shu; j++) {
-			let tx = x1 + (j / _shu) * (x2 - x1); // 绝对坐标\
+			let tx = x1 + (j / _shu) * (x2 - x1); // 绝对坐标
 			ctx.beginPath();
 			ctx.moveTo(tx, y1);
 			ctx.lineTo(tx, y2);
@@ -137,8 +146,7 @@ var notecontrol = {
 		for (let i = 0; i < notes.length; i++) {
 			let y = -450 + hi * (notes[i].startTime[0] + notes[i].startTime[1] / notes[i].startTime[2]);
 			let h = ((Math.round(notes[i].positionX) * 100000 + Math.round(y)) / 10).toFixed(0);
-			let t = mp.get(h);
-			if (t == undefined) t = 0;
+			let t = mp.get(h) ?? 0;
 			if (t < 10) { // 堆叠过多时不显示
 				let y2 = (notes[i].type == 2) ? -450 + hi * (notes[i].endTime[0] + notes[i].endTime[1] / notes[i].endTime[2]) : y;
 				this.render_cache.push({
@@ -249,6 +257,7 @@ var notecontrol = {
 		if (selection.length == 1) {
 			$("edit").style.display = "block";
 			$("edit-x").value = notes[selection[0]].positionX;
+			$("edit-y").value = notes[selection[0]].yOffset;
 			$("edit-time").value = notes[selection[0]].startTime[0] + ":" + notes[selection[0]].startTime[1] + "/" + notes[selection].startTime[2];
 			$("edit-time2").value = notes[selection[0]].endTime[0] + ":" + notes[selection[0]].endTime[1] + "/" + notes[selection].endTime[2];
 			$("edit-d").value = notes[selection[0]].above;
@@ -261,12 +270,20 @@ var notecontrol = {
 	initedit: () => { // 保存编辑面板
 		$("edit-x").addEventListener("change", () => {
 			if (selection.length > 0) {
-				if (isNaN(Number($("edit-x").value))) $("edit-x").value = notes[selection][0].positionX;
+				let tmp = Number($("edit-x").value);
+				if (isNaN(tmp)) $("edit-x").value = notes[selection][0].positionX;
 				else {
-					for (let i = 0; i < selection.length; i++) {
-						notes[selection[i]].positionX = Number($("edit-x").value);
-					}
+					for (let i = 0; i < selection.length; i++) notes[selection[i]].positionX = tmp;
 					notecontrol.update();
+				}
+			}
+		});
+		$("edit-y").addEventListener("change", () => {
+			if (selection.length > 0) {
+				let tmp = Number($("edit-y").value);
+				if (isNaN(tmp)) $("edit-y").value = notes[selection][0].yOffset;
+				else {
+					for (let i = 0; i < selection.length; i++) notes[selection[i]].yOffset = tmp;
 				}
 			}
 		});
@@ -293,13 +310,11 @@ var notecontrol = {
 		$("edit-d").addEventListener("change", () => {
 			if (selection.length > 0) {
 				for (let i = 0; i < selection.length; i++) notes[selection[i]].above = Number($("edit-d").value);
-				notecontrol.update();
 			}
 		});
 		$("edit-t").addEventListener("change", () => {
 			if (selection.length > 0) {
 				for (let i = 0; i < selection.length; i++) notes[selection[i]].isFake = Number($("edit-t").value);
-				notecontrol.update();
 			}
 		});
 	}
@@ -333,8 +348,8 @@ var eventcontrol = {
 			ctx.fillRect(x - w / 2, y, w, y2 - y);
 			ctx.fillStyle = color.text; // 文字颜色
 			ctx.textAlign = "center";
-			ctx.fillText(val1.toFixed(settingscontorl.settings.decimal), x, y + 18);
-			ctx.fillText(val2.toFixed(settingscontorl.settings.decimal), x, y2 - 18);
+			ctx.fillText(val1.toFixed(settingscontrol.settings.decimal), x, y + 18);
+			ctx.fillText(val2.toFixed(settingscontrol.settings.decimal), x, y2 - 18);
 		}
 		let x = -675;
 		for (let type of ["moveXEvents", "moveYEvents", "rotateEvents", "alphaEvents", "speedEvents"]) {
@@ -449,7 +464,7 @@ var eventcontrol = {
 };
 // 下方设置面板管理 / 界面设置
 // ============================================================================================
-var settingscontorl = {
+var settingscontrol = {
 	load: () => { // js --> UI
 		$("s-bpm").value = bpm;
 		$("s-shu").value = shu;
@@ -470,75 +485,96 @@ var settingscontorl = {
 		})
 	},
 	settings: {
-		decimal: 1 // 显示事件的值时，保留几位小数
+		decimal: 1, // 显示事件的值时，保留几位小数
+		touch_put: 0 // 移动端模式
 	}
 };
-settingscontorl.load();
-settingscontorl.init();
+if (/mobile/i.test(navigator.userAgent)) settingscontrol.settings.touch_put = 1;
+settingscontrol.load();
+settingscontrol.init();
 // 渲染
 // ============================================================================================
 var rdelta = 0;
-var r_last_lines_length;
+var r_last_lines_length, r_last_evs_length;
 function main() {
-	function render_text(x, y1, y2) { // 绘制小节的数字
-		ctx.fillStyle = color.text; // 文字颜色
-		ctx.textAlign = "start";
-		for (let i = Math.floor(Math.max(-rdelta / hi, 0)); i < n; i++) {
-			let y = (i * hi) - 450;
-			y += rdelta;
-			if (y > 500) continue;
-			let ty = y2 - ((y + 450) / 900) * (y2 - y1); // 绝对坐标
-			ctx.fillText(i, x, ty);
-		}
-	}
-	// 刷新判定线列表
-	if (all_data.judgeLineList.length != r_last_lines_length) {
-		r_last_lines_length = all_data.judgeLineList.length;
-		let v = $("lines").value;
-		$("lines").innerHTML = "";
-		for (let i = 0; i < all_data.judgeLineList.length; i++) {
-			let op = document.createElement("option");
-			op.value = i;
-			op.innerText = all_data.judgeLineList[i].Name;
-			$("lines").appendChild(op);
-		}
-		$("lines").value = (v == '' ? 0 : v);
-	}
+	// 填充背景	
 	ctx.fillStyle = color.background;
 	ctx.fillRect(0, 0, 1600, 900);
-	notecontrol.render(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
-	render_text(nrr.x2 + 12, nrr.y1, nrr.y2);
-	if (edit_event) {
-		eventcontrol.render(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
-		// render_text(evrr.x2 + 10, evrr.y1, evrr.y2);
+
+	if (playing == 1) {
+		rdelta -= bpm / 60 / 60 * hi;
+		// 直接渲染画面
+
+		ctx.fillStyle = color.background2;
+		ctx.fillRect(0, 0, 1600, renderer.y1);
+		ctx.fillRect(0, renderer.y2, 1600, 900);
+		ctx.fillRect(0, 0, renderer.x1, 900);
+		ctx.fillRect(renderer.x2, 0, 1600, 900);
+
+	} else {
+		function render_text(x, y1, y2) { // 绘制小节的数字
+			ctx.fillStyle = color.text; // 文字颜色
+			ctx.textAlign = "start";
+			for (let i = Math.floor(Math.max(-rdelta / hi, 0)); i < n; i++) {
+				let y = (i * hi) - 450;
+				y += rdelta;
+				if (y > 500) continue;
+				let ty = y2 - ((y + 450) / 900) * (y2 - y1); // 绝对坐标
+				ctx.fillText(i, x, ty);
+			}
+		}
+		// 刷新判定线列表
+		if (all_data.judgeLineList.length != r_last_lines_length) {
+			r_last_lines_length = all_data.judgeLineList.length;
+			let v = $("lines").value;
+			$("lines").innerHTML = "";
+			for (let i = 0; i < all_data.judgeLineList.length; i++) {
+				let op = document.createElement("option");
+				op.value = i;
+				op.innerText = all_data.judgeLineList[i].Name;
+				$("lines").appendChild(op);
+			}
+			$("lines").value = (v == '' ? 0 : v);
+		}
+		// 刷新事件层级列表
+		if (evs.length != r_last_evs_length) {
+			r_last_evs_length = evs.length;
+			let con = $("eventlayer-con");
+			con.innerHTML = "";
+			for (let i = 0; i < evs.length; i++) {
+				let e = document.createElement("div");
+				e.className = "eventlayer-btn";
+				e.innerText = i;
+				con.append(e);
+				e.addEventListener("click", () => {
+					evs_layer = i;
+				})
+			}
+		}
+		notecontrol.render(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
+		render_text(nrr.x2 + 12, nrr.y1, nrr.y2);
+		if (edit_event) {
+			eventcontrol.render(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
+			// render_text(evrr.x2 + 10, evrr.y1, evrr.y2);
+		}
+		// 刷新选项菜单
+		if (settingscontrol.settings.touch_put) $("mode").style.display = "block";
+		else $("mode").style.display = "none", mode = "computer";
 	}
+
+
 }
-// 操作
+// 操作：键盘、其他
 // ============================================================================================
-notecontrol.initedit();
-eventcontrol.initedit();
-document.addEventListener('wheel', (e) => {
-	rdelta += e.deltaY;
-});
-var mousedata = { in: 0, x: 0, y: 0 }; // canvas 坐标系
-$("cvs").addEventListener("mousemove", function (event) {
-	const rect = $("cvs").getBoundingClientRect(); // 计算鼠标相对于 canvas 内部的坐标，考虑缩放
-	mousedata.x = (event.clientX - rect.left) * $("cvs").width / rect.width;
-	mousedata.y = (event.clientY - rect.top) * $("cvs").height / rect.height;
-	mousedata.in = (event.clientX >= rect.left && event.clientX <= rect.left + rect.width && event.clientY >= rect.top && event.clientY <= rect.top + rect.height) ? 1 : 0;
-});
-document.addEventListener('keydown', function (event) {
-	if (event.key == "Control") control_down = 1;
-	if (mousedata.in == 0) return;
-	event.key = event.key.toLowerCase();
-	console.log("按键 " + event.key);
-	if (event.key == "q") {
+function put_qwer(key) { // 识别 q,w,e,r 键
+	// 这里专门搞一个函数出来，是为了适配手机端！
+	if (key == "q") {
 		notecontrol.put(nrr.x1, nrr.y1, nrr.x2, nrr.y2, mousedata.x, mousedata.y, 1);
-	} else if (event.key == "e") {
+	} else if (key == "e") {
 		notecontrol.put(nrr.x1, nrr.y1, nrr.x2, nrr.y2, mousedata.x, mousedata.y, 3);
-	} else if (event.key == "w") {
+	} else if (key == "w") {
 		notecontrol.put(nrr.x1, nrr.y1, nrr.x2, nrr.y2, mousedata.x, mousedata.y, 4);
-	} else if (event.key == "r") {
+	} else if (key == "r") {
 		if (edit_event && mousedata.x > (nrr.x2 + evrr.x1) / 2) {
 			let tmp = notecontrol.put_calc(evrr.x1, evrr.y1, evrr.x2, evrr.y2, mousedata.x, mousedata.y, 4);
 			if (put_ev_st != null) {
@@ -556,6 +592,15 @@ document.addEventListener('keydown', function (event) {
 				put_hold_x = tmp[0], put_hold_st = tmp[1];
 			}
 		}
+	}
+}
+document.addEventListener('keydown', function (event) {
+	if (event.key == "Control") control_down = 1;
+	if (mousedata.in == 0) return;
+	event.key = event.key.toLowerCase();
+	console.log("按键 " + event.key + " " + event.keyCode);
+	if (event.key == "q" || event.key == "e" || event.key == "w" || event.key == "r") {
+		put_qwer(event.key);
 	} else if (event.key == "Delete") {
 		// 删除音符：
 		if (selection.length > 0) {
@@ -574,48 +619,39 @@ document.addEventListener('keydown', function (event) {
 			}
 		}
 		selection_ev = [];
+	} else if (event.key == " ") {
+		playing ^= 1;
+		if (playing == 1) renderer.sort();
 	}
 });
 document.addEventListener('keyup', function (event) {
 	if (event.key == "Control") control_down = 0;
 });
-$("cvs").addEventListener('click', function () {
-	if (edit_event && mousedata.x > (nrr.x2 + evrr.x1) / 2) { // 点击到事件区域
-		let p = eventcontrol.check_select(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
-		if (p == undefined) return;
-		selection = [];
-		if (control_down == 0) {
-			if (selection_ev.length == 1 && cmparray(selection_ev[0], p)) selection_ev = [], notecontrol.hedit();
-			else selection_ev = [p], eventcontrol.edit(), notecontrol.hedit();
-		} else {
-			if (selection_ev.includes(p)) {
-				selection_ev.splice(selection.indexOf(p), 1);
-				if (selection_ev.length == 0) eventcontrol.hedit();
-			}
-			else selection_ev.push(p);
-		}
-	} else { // 点击到音符区域
-		let p = notecontrol.check_select(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
-		if (p == undefined) return;
-		selection_ev = [];
-		if (control_down == 0) {
-			if (selection[0] == p && selection.length == 1) selection = [], notecontrol.hedit();
-			else selection = [p], notecontrol.edit(), eventcontrol.hedit();
-		} else {
-			if (selection.includes(p)) {
-				selection.splice(selection.indexOf(p), 1);
-				if (selection.length == 0) notecontrol.hedit();
-			}
-			else selection.push(p);
-		}
-	}
-});
+
 $("lines").addEventListener('change', () => {
 	notes = all_data.judgeLineList[$("lines").value].notes;
 	notecontrol.update();
 	evs = all_data.judgeLineList[$("lines").value].eventLayers;
 	selection = [];
 });
+// 操作：鼠标、触摸
+// ============================================================================================
+$("eventlayer-add").addEventListener("click", () => { // 添加事件层级
+	evs.push({
+		"alphaEvents": [],
+		"moveXEvents": [],
+		"moveYEvents": [],
+		"rotateEvents": [],
+		"speedEvents": []
+	})
+})
+$("eventlayer-del").addEventListener("click", () => { // 添加事件层级
+	if (evs.length > 1) {
+		let e = evs[evs.length - 1];
+		let cnt = e.alphaEvents.length + e.moveXEvents.length + e.moveYEvents.length + e.rotateEvents.length + e.speedEvents.length;
+		if (cnt == 0 || "yes" == window.prompt("最后一个事件层级已经有事件了，是否强制删除？是输入 yes")) evs.pop();
+	}
+})
 $("m-addline").addEventListener('click', () => {
 	all_data.judgeLineList.push(new_judge_line());
 	window.alert("添加成功")
@@ -633,6 +669,111 @@ $("m-event").addEventListener('click', () => {
 		nrr.x2 = 750;
 	}
 });
+$("m-touch").addEventListener('click', () => {
+	if (settingscontrol.settings.touch_put == 1) {
+		settingscontrol.settings.touch_put = 0;
+		mode = "computer";
+	} else {
+		settingscontrol.settings.touch_put = 1;
+	}
+});
+
+notecontrol.initedit();
+eventcontrol.initedit();
+document.addEventListener('wheel', (e) => {
+	rdelta += e.deltaY;
+	if (rdelta > 100) rdelta = 100;
+});
+var mousedata = { in: 0, x: 0, y: 0, down: 0 }; // canvas 坐标系
+$("cvs").addEventListener("mousemove", function (event) {
+	const rect = $("cvs").getBoundingClientRect(); // 计算鼠标相对于 canvas 内部的坐标，考虑缩放
+	mousedata.x = (event.clientX - rect.left) * $("cvs").width / rect.width;
+	mousedata.y = (event.clientY - rect.top) * $("cvs").height / rect.height;
+	mousedata.in = 1;
+	if (mousedata.drag != null) { // 拖动普通音符
+		let s = notecontrol.put_calc(nrr.x1, nrr.y1, nrr.x2, nrr.y2, mousedata.x, mousedata.y);
+		if (s[0] != notes[mousedata.drag].positionX || !cmparray(s[1], notes[mousedata.drag].startTime)) {
+			notes[mousedata.drag].positionX = s[0];
+			notes[mousedata.drag].startTime = s[1];
+			notes[mousedata.drag].endTime = s[1];
+			notecontrol.update();
+		}
+	}
+});
+$("cvs").addEventListener("mouseout", function (event) {
+	mousedata.in = 0;
+});
+$("cvs").addEventListener("mousedown", () => {
+	mousedata.down = 1;
+	mousedata.drag = null;
+	if (mousedata.x < (nrr.x2 + evrr.x1) / 2) { // 点击到音符区域
+		let p = notecontrol.check_select(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
+		if (notes[p].type != 2) {
+			mousedata.drag = p;
+			console.log(mousedata.drag);
+		}
+	}
+});
+document.addEventListener("mouseup", () => {
+	mousedata.down = 0;
+	mousedata.drag = null;
+});
+
+// 移动设备的滑动
+let delta = 0;
+document.addEventListener('touchstart', function (e) {
+	delta = e.touches[0].clientY;
+}, { passive: false });
+document.addEventListener('touchmove', function (e) {
+	e.preventDefault();
+	let currentDelta = e.touches[0].clientY;
+	let distance = currentDelta - delta;
+	delta = currentDelta;
+	rdelta -= distance;
+	if (rdelta > 100) rdelta = 100;
+}, { passive: false });
+
+$("cvs").addEventListener('click', function () {
+	if (edit_event && mousedata.x > (nrr.x2 + evrr.x1) / 2) { // 点击到事件区域
+		let p = eventcontrol.check_select(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
+		if (p == undefined) return;
+		selection = [];
+		if (control_down == 0) {
+			if (selection_ev.length == 1 && cmparray(selection_ev[0], p)) selection_ev = [], notecontrol.hedit();
+			else selection_ev = [p], eventcontrol.edit(), notecontrol.hedit();
+		} else {
+			if (selection_ev.includes(p)) {
+				selection_ev.splice(selection.indexOf(p), 1);
+				if (selection_ev.length == 0) eventcontrol.hedit();
+			}
+			else selection_ev.push(p);
+		}
+	} else { // 点击到音符区域
+		if (mode == "computer") {
+			let p = notecontrol.check_select(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
+			if (p == undefined) return;
+			selection_ev = [];
+			if (control_down == 0) {
+				if (selection[0] == p && selection.length == 1) selection = [], notecontrol.hedit();
+				else selection = [p], notecontrol.edit(), eventcontrol.hedit();
+			} else {
+				if (selection.includes(p)) {
+					selection.splice(selection.indexOf(p), 1);
+					if (selection.length == 0) notecontrol.hedit();
+				}
+				else selection.push(p);
+			}
+		} else {
+			put_qwer(mode);
+		}
+	}
+});
+for (let i = 0; i <= 4; i++) {
+	$("mode").children[i].addEventListener('click', () => {
+		mode = ["computer", "q", "w", "e", "r"][i];
+		if (i == 0) put_hold_st = null; // 停止放置长条
+	});
+}
 $("fillnotes-open").addEventListener('click', () => {
 	$('window').style.display = 'flex';
 	if (selection.length == 1) {
@@ -655,56 +796,6 @@ $("fillnotes-open").addEventListener('click', () => {
 	}
 });
 $("fillnotes").addEventListener('click', () => {
-	function div(a, b) {
-		return (a[0] + a[1] / a[2]) / (b[0] + b[1] / b[2]);
-	}
-	function calcease(t, x) { // 类型，比值（0~1）
-		function easeOutBounce(x) {
-			const n1 = 7.5625;
-			const d1 = 2.75;
-
-			if (x < 1 / d1) {
-				return n1 * x * x;
-			} else if (x < 2 / d1) {
-				return n1 * (x -= 1.5 / d1) * x + 0.75;
-			} else if (x < 2.5 / d1) {
-				return n1 * (x -= 2.25 / d1) * x + 0.9375;
-			} else {
-				return n1 * (x -= 2.625 / d1) * x + 0.984375;
-			}
-		}
-		switch (parseInt(t)) { // 计算不同的缓动函数
-			case 1: return x;
-			case 2: return Math.sin((x * Math.PI) / 2);
-			case 3: return 1 - Math.cos((x * Math.PI) / 2);
-			case 4: return 1 - (1 - x) * (1 - x);
-			case 5: return x * x;
-			case 6: return -(Math.cos(Math.PI * x) - 1) / 2;
-			case 7: return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-			case 8: return 1 - Math.pow(1 - x, 3);
-			case 9: return x * x * x;
-			case 10: return 1 - Math.pow(1 - x, 4);
-			case 11: return x * x * x * x;
-			case 12: return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-			case 13: return x < 0.5 ? 8 * x * x * x * x : 1 - Math.pow(-2 * x + 2, 4) / 2;
-			case 14: return 1 - Math.pow(1 - x, 5);
-			case 15: return x * x * x * x * x;
-			case 16: return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
-			case 17: return x === 0 ? 0 : Math.pow(2, 10 * x - 10);
-			case 18: return Math.sqrt(1 - Math.pow(x - 1, 2));
-			case 19: return 1 - Math.sqrt(1 - Math.pow(x, 2));
-			case 20: return 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2);
-			case 21: return 2.70158 * x * x * x - 1.70158 * x * x;
-			case 22: return x < 0.5 ? (1 - Math.sqrt(1 - Math.pow(2 * x, 2))) / 2 : (Math.sqrt(1 - Math.pow(-2 * x + 2, 2)) + 1) / 2;
-			case 23: return x < 0.5 ? (Math.pow(2 * x, 2) * ((2.5949095 + 1) * 2 * x - 2.5949095)) / 2 : (Math.pow(2 * x - 2, 2) * ((2.5949095 + 1) * (x * 2 - 2) + 2.5949095) + 2) / 2;
-			case 24: return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x * 10 - 0.75) * (2 * Math.PI) / 3) + 1;
-			case 25: return x === 0 ? 0 : x === 1 ? 1 : -Math.pow(2, 10 * x - 10) * Math.sin((x * 10 - 10.75) * (2 * Math.PI) / 3);
-			case 26: return easeOutBounce(x);
-			case 27: return 1 - easeOutBounce(1 - x);
-			case 28: return x < 0.5 ? (1 - easeOutBounce(1 - 2 * x)) / 2 : (1 + easeOutBounce(2 * x - 1)) / 2;
-		}
-	}
-
 	// st 填充到 ed，每次增加 density
 	let st = $("fillnotes-time").value.split(/[:\/]/);
 	if (!isBeat(st)) return;
@@ -733,4 +824,6 @@ $("fillnotes").addEventListener('click', () => {
 
 	notecontrol.update();
 });
+
+
 setInterval(main, 1000 / 60); // 60 帧
