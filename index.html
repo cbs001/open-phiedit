@@ -3,11 +3,12 @@
 
 <head>
 	<meta charset="UTF-8">
-	<title>open phiedit 2.0</title>
+	<title>open phiedit 3</title>
 </head>
 
 <body>
 	<div id="mainUI">
+		<audio id="music-player"></audio>
 		<div id="downloading">
 			保存文件中......
 		</div>
@@ -30,9 +31,9 @@
 				编辑
 				<div>
 					<div id="m-addline">添加判定线</div>
-					<div id="m-changename">更改判定线名</div>
 					<div id="m-event">打开/关闭事件</div>
-					<div id="m-touch">打开/关闭触摸放置</div>
+					<div id="m-touch">打开/关闭触控模式</div>
+					<div id="m-player">打开/关闭预览</div>
 				</div>
 			</div>
 		</div>
@@ -42,26 +43,33 @@
 			<select id="lines" style="width: 30%"></select>
 			<!-- 事件层级选择 -->
 			<div style="display:flex">
+				<div id="eventlayer-ex" class="eventlayer-btn">ex</div>
 				<!-- 动态扩展的容器 -->
 				<div id="eventlayer-con" style="display:flex"></div>
 				<div id="eventlayer-add" class="eventlayer-btn">+</div>
 				<div id="eventlayer-del" class="eventlayer-btn">-</div>
 			</div>
 		</div>
-		<div id="mode">
-			<img src="img/1.svg" style="height: 100%;">
-			<img src="img/2.svg" style="height: 100%;">
-			<img src="img/3.svg" style="height: 100%;">
-			<img src="img/4.svg" style="height: 100%;">
-			<img src="img/5.svg" style="height: 100%;">
-		</div>
 		<div style="display:flex">
 			<div style="border: 1px solid black; width: 75%;">
+				<div id="mode" style="display:flex">
+					<img src="img/1.svg" style="height: 100%;">
+					<img src="img/2.svg" style="height: 100%;">
+					<img src="img/3.svg" style="height: 100%;">
+					<img src="img/4.svg" style="height: 100%;">
+					<img src="img/5.svg" style="height: 100%;">
+					<div style="margin-left: auto; display:flex">
+						<img src="img/icon1.svg" style="height: 100%;" id="mobile-phone-play">
+						<div style="background: rgb(147, 147, 147); text-align:'center'; padding: 10px;"
+							id="mobile-phone-delete">删除</div>
+					</div>
+				</div>
 				<canvas id="cvs" width="1600px" height="900px" style="width: 100%;">
 				</canvas>
 			</div>
 			<div style="width: 25%; display:none" id="edit">
-				X坐标：<input id="edit-x"></input><br>
+				<h3>音符编辑</h3>
+				X坐标：<input id="edit-x" type="number"></input><br>
 				起始时间：<input id="edit-time"></input><br>
 				结束时间：<input id="edit-time2"></input><br>
 				朝向：<select id="edit-d">
@@ -74,9 +82,10 @@
 					<option value="1">假音符</option>
 				</select>
 				<br>
-				Y轴偏移：<input id="edit-y"></input><br>
+				Y轴偏移：<input id="edit-y" type="number"></input><br>
 			</div>
 			<div style="width: 25%; display:none" id="edit2">
+				<h3>事件编辑</h3>
 				<p id="event-name"></p>
 				缓动类型：<select id="edit2-ease">
 					<option value="1">1 linear</option>
@@ -113,6 +122,11 @@
 				结束时间：<input id="edit2-time2"></input><br>
 				起始值：<input id="edit2-st"></input><br>
 				结束值：<input id="edit2-ed"></input><br>
+			</div>
+			<div style="width: 25%; display:block" id="edit3">
+				<h3>判定线编辑</h3>
+				名称：<input id="edit3-name"></input><br>
+				父线：<input id="edit3-fa" type="number"></input><br>
 			</div>
 		</div>
 		基本信息设置栏：
@@ -286,6 +300,8 @@
 	<script src="math.js"></script>
 	<script src="data.js"></script>
 	<script src="main.js"></script>
+	<script src="renderer.js"></script>
+
 </body>
 
 </html>
