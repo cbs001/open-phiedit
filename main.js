@@ -874,12 +874,14 @@ document.addEventListener('touchstart', function (e) {
 	delta = e.touches[0].clientY;
 }, { passive: false });
 document.addEventListener('touchmove', function (e) {
-	e.preventDefault();
-	let currentDelta = e.touches[0].clientY;
-	let distance = currentDelta - delta;
-	delta = currentDelta;
-	rdelta -= distance;
-	if (rdelta > 100) rdelta = 100;
+	if (e.touches.length == 1) {
+		e.preventDefault();
+		let currentDelta = e.touches[0].clientY;
+		let distance = currentDelta - delta;
+		delta = currentDelta;
+		rdelta -= distance;
+		if (rdelta > 100) rdelta = 100;
+	}
 }, { passive: false });
 
 $("cvs").addEventListener('click', function () {
