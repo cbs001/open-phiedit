@@ -231,7 +231,7 @@ async function FileDownload(content, filename) {
 	const eleLink = document.createElement('a');
 	eleLink.download = filename;
 	eleLink.style.display = 'none';
-	const blob = new Blob(content);
+	const blob = new Blob([content]);
 	eleLink.href = URL.createObjectURL(blob);
 	document.body.appendChild(eleLink);
 	eleLink.click();
@@ -258,7 +258,7 @@ $("m-load").addEventListener('click', () => {
 		if (files.length) {
 			console.log("加载成功, 类型：" + files[0].type);
 
-			if (files[0].type.includes("audio")) {
+			if (files[0].type.includes("audio") || files[0].type == "video/ogg") {
 				$("music-player").src = URL.createObjectURL(files[0]);
 			} else {
 				var reader = new FileReader();
@@ -305,7 +305,8 @@ $("m-save").addEventListener('click', () => {
 		$("downloading").style.display = "block";
 		setTimeout(() => {
 			for (let i = 0; i < all_data.judgeLineList.length; i++) {
-				all_data.judgeLineList[i].numOfNotes = all_data.judgeLineList[i].notes.length;
+				if(all_data.judgeLineList[i].notes == undefined) all_data.judgeLineList[i].numOfNotes = 0;
+				else all_data.judgeLineList[i].numOfNotes = all_data.judgeLineList[i].notes.length;
 			}
 
 			if (window.showSaveFilePicker == undefined) {
