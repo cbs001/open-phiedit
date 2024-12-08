@@ -680,10 +680,10 @@ var playercontrol = {
 		} else {
 			musicplayer.currentTime = -rdelta / hi * (60 / bpm);
 			musicplayer.play().then(() => {
-				playing = 1;
 				this.startChartTime = -rdelta / hi * (60 / bpm);
 				this.startTime = performance.now();
-				console.log(this.startTime);
+				// console.log(this.startTime, rdelta, this.startChartTime);
+				playing = 1;
 			});
 		}
 	}, pause: function () {
@@ -691,10 +691,9 @@ var playercontrol = {
 		let musicplayer = $("music-player");
 		musicplayer.pause();
 	}, change: function () {
-		if (playing == 0) playing = 1, this.play();
-		else playing = 0, this.pause();
+		if (playing == 0) this.play();
+		else this.pause();
 	}, updateTime: function () {
-
 		rdelta = -hi * (this.startChartTime + (performance.now() - this.startTime) / 1000) / (60 / bpm);
 	}
 }
