@@ -3,7 +3,14 @@ renderer = {
 	y1: 0,
 	x2: 1475,
 	y2: 900,
+	cache: null,
 	sort: function () {
+		// 初始化缓存
+		if (this.cache == null || this.cache.length != all_data.judgeLineList.length) {
+			this.cache = [];
+			for (let i = 0; i < all_data.judgeLineList.length; i++) this.cache.push(new Array);
+		}
+
 		function to(a) {
 			return a[0] + a[1] / a[2];
 		}
@@ -17,6 +24,13 @@ renderer = {
 					line.eventLayers[j].rotateEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
 					line.eventLayers[j].alphaEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
 					line.eventLayers[j].speedEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
+				}
+			}
+			if (line.notes != null) {
+				this.cache[i] = [];
+				for (let j = 0; j < line.notes.length; j++) {
+					if (line.notes[j].type == 2) this.cache[i].push({ st: this.getdis(line, line.notes[j].startTime), ed: this.getdis(line, line.notes[j].endTime) });
+					else this.cache[i].push(this.getdis(line, line.notes[j].startTime));
 				}
 			}
 		}
@@ -171,11 +185,11 @@ renderer = {
 						notex1 = x[i] + Math.cos(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
 						notey1 = y[i] - Math.sin(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
 					} else {
-						let dis1 = this.getdis(line, line.notes[j].startTime) - passed;
+						let dis1 = this.cache[i][j].st - passed;
 						notex1 = x[i] + Math.sin(f[i] * (Math.PI / 180)) * dis1 + Math.cos(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
 						notey1 = y[i] + Math.cos(f[i] * (Math.PI / 180)) * dis1 - Math.sin(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
 					}
-					let dis2 = this.getdis(line, line.notes[j].endTime) - passed;
+					let dis2 = this.cache[i][j].ed - passed;
 					let notex2 = x[i] + Math.sin(f[i] * (Math.PI / 180)) * dis2 + Math.cos(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
 					let notey2 = y[i] + Math.cos(f[i] * (Math.PI / 180)) * dis2 - Math.sin(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
 					let tx1 = this.x1 + (this.x2 - this.x1) * ((notex1 + 675) / 1350);
@@ -186,7 +200,7 @@ renderer = {
 					// console.log("hold", notex1, notex2, notey1, notey2);
 					
 				} else {
-					let dis = this.getdis(line, line.notes[j].startTime) - passed; // 音符现在到判定线的距离
+					let dis = this.cache[i][j] - passed; // 音符现在到判定线的距离
 					if (dis < 1700) {
 						let notex = x[i] + Math.sin(f[i] * (Math.PI / 180)) * (dis + line.notes[j].yOffset) + Math.cos(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
 						let notey = y[i] + Math.cos(f[i] * (Math.PI / 180)) * (dis + line.notes[j].yOffset) - Math.sin(f[i] * (Math.PI / 180)) * line.notes[j].positionX;
