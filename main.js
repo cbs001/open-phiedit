@@ -69,6 +69,7 @@ function change_line() {
 	notecontrol.update();
 	selection = [];
 	sidebarcontrol.edit_line();
+	renderer.sort(); // 防止 bug
 }
 // 音符管理
 // ============================================================================================
@@ -93,7 +94,7 @@ var notecontrol = {
 			"visibleTime": 9999999.0,
 			"yOffset": 0.0
 		});
-		if (auto_update) this.update();
+		if (auto_update) this.update(), renderer.sort();
 	},
 	addhold: function (st, ed, x, auto_update = 1) { // 注意：调用此函数会自动更新渲染缓存，除非更改参数 auto_update
 		/*
@@ -112,7 +113,7 @@ var notecontrol = {
 			"visibleTime": 9999999.0,
 			"yOffset": 0.0
 		});
-		if (auto_update) this.update();
+		if (auto_update) this.update(), renderer.sort();
 	},
 	/*
 	音符区域相对坐标：1350*900（rpe 坐标系），(0,0) 为正中心，向上向右为正，仅在渲染时转换为绝对坐标
@@ -277,6 +278,7 @@ var eventcontrol = {
 			"start": stval,
 			"startTime": st
 		});
+		renderer.sort();
 	},
 	ex_add: (typex, st, ed, stval = 0, edval = 0) => { // 添加扩展事件
 		let t = ["scaleXEvents", "scaleYEvents", "colorEvents", "textEvents", "inclineEvents", "paintEvents"][Math.round((typex + 675) / 270)];
@@ -756,11 +758,11 @@ function delete_selection() {
 document.addEventListener('keydown', function (event) {
 	if (event.key == "Control") control_down = 1;
 	if (mousedata.in == 0) return;
-	event.key = event.key.toLowerCase();
-	console.log("按键 " + event.key + " " + event.keyCode);
-	if (event.key == "q" || event.key == "e" || event.key == "w" || event.key == "r") put_qwer(event.key);
-	else if (event.key == "Delete") delete_selection();
-	else if (event.key == " ") playercontrol.change();
+	let key = event.key.toLowerCase(); // v3.1 修复
+	console.log("按键 " + key + " " + event.keyCode);
+	if (key == "q" || key == "e" || key == "w" || key == "r") put_qwer(key);
+	else if (key == "Delete") delete_selection();
+	else if (key == " ") playercontrol.change();
 });
 $("mobile-phone-delete").addEventListener("click", () => { // 等价于按下 delete
 	delete_selection();
