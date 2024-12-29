@@ -761,7 +761,7 @@ document.addEventListener('keydown', function (event) {
 	let key = event.key.toLowerCase(); // v3.1 修复
 	console.log("按键 " + key + " " + event.keyCode);
 	if (key == "q" || key == "e" || key == "w" || key == "r") put_qwer(key);
-	else if (key == "Delete") delete_selection();
+	else if (key == "delete") delete_selection();
 	else if (key == " ") playercontrol.change();
 });
 $("mobile-phone-delete").addEventListener("click", () => { // 等价于按下 delete
