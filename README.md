@@ -27,10 +27,53 @@
 
 空格键开始播放，再次按下空格键停止播放
 
-## update
+### update
 
-v3.1：[微调] 修复按下大写字母无法放置的问题；预处理音符的距离，提供播放谱面的速度。
+**v4.0:**：尝试对混合 bpm 提供支持，尝试对大文本读取提供支持，优化渲染，以及一些 rpe 特性
 
-v3.0：播放谱面，优化触摸放置功能
+**v3.1**：[微调] 修复按下大写字母无法放置的问题；预处理音符的距离，提供播放谱面的速度。
 
-v2.0: 触摸放置（测试），note 拖动，还有一些细节
+**v3.0**：播放谱面，优化触摸放置功能
+
+**v2.0**: 触摸放置（测试），note 拖动，还有一些细节
+
+### rpe 格式支持
+
+- [x] "BPMList"
+- [ ] "META"
+- [ ] "chartTime"
+- [ ] "judgeLineGroup"
+- [ ] "judgeLineList"
+  - [ ] "Group"
+  - [x] "Name"
+  - [ ] "Texture"
+  - [x] "alphaControl"
+  - [ ] "anchor"
+  - [ ] "bpmfactor"
+  - [ ] "eventLayers"
+    - [ ] "bezier"
+    - [ ] "bezierPoints"
+    - [x] "easingLeft"
+    - [x] "easingRight"
+    - [x] "easingType"
+    - [x] "end"
+    - [x] "endTime"
+    - [ ] "linkgroup"
+    - [x] "start"
+    - [x] "startTime"
+  - [ ] "extended"
+    - [ ] "inclineEvents"
+    - [x] "colorEvents"
+    - [x] "textEvents"
+    - [x] "scaleXEvents"
+    - [x] "scaleYEvents"
+    - [x] "paintEvents"
+  - [x] "father"
+  - [ ] "isCover"
+  - [ ] "isGif"
+  - [x] "numOfNotes"
+  - [x] "posControl"
+  - [x] "sizeControl"
+  - [ ] "skewControl"
+  - [x] "yControl"
+  - [ ] "zOrder"
