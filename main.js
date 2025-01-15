@@ -5,13 +5,15 @@ const color = {
 	"background2": "#222",
 	"text": "#FFF",
 	"evu": "#ffef5b96",
-	"evd": "#11fbbf96"
+	"evd": "#11fbbf96",
+	"select_rect": "#a2fffd60"
 }
 // 全局变量 / 数据管理
 // ============================================================================================
 window.$ = (e) => {
 	return document.getElementById(e);
 }
+window.onbeforeunload = (e) => {return 1};
 var mode = "computer";
 /*
 mode 变量详解
@@ -35,7 +37,6 @@ var selection_ev = []; // 当前选中的事件，格式：[编号，类型]
 var put_hold_st = null, put_hold_x; // 放置 Hold 音符用
 var put_ev_st = null, put_ev_x; // 放置事件用
 var control_down = 0; // ctrl 键是否按下
-var bpm = 80;
 var edit_event = 0; // 是否编辑事件
 var in_download = 0; // 下载中？
 var nrr = { // notes render rect
@@ -50,10 +51,7 @@ for (let i = 0; i < 5; i++) all_data.judgeLineList.push(new_judge_line());
 var evs = null; // 当前判定线的事件
 var now_line = null; // 当前判定线
 var evs_layer = 0; // 选中的事件层级
-
-function isBeat(e) {
-	return e.length == 3 && !isNaN(e[0]) && !isNaN(e[1]) && !isNaN(e[2]);
-}
+var bpm = all_data.BPMList;
 function cmparray(a, b) {
 	// Array.isArray(a) && Array.isArray(b) && 
 	return a.length == b.length && a.every((v, i) => v == b[i]);
@@ -68,8 +66,7 @@ function change_line() {
 	notes = now_line.notes;
 	notecontrol.update();
 	selection = [];
-	sidebarcontrol.edit_line();
-	renderer.sort(); // 防止 bug
+	sidebarcontrol.edit_update();
 }
 // 音符管理
 // ============================================================================================
@@ -94,7 +91,7 @@ var notecontrol = {
 			"visibleTime": 9999999.0,
 			"yOffset": 0.0
 		});
-		if (auto_update) this.update(), renderer.sort();
+		if (auto_update) this.update();
 	},
 	addhold: function (st, ed, x, auto_update = 1) { // 注意：调用此函数会自动更新渲染缓存，除非更改参数 auto_update
 		/*
@@ -113,7 +110,7 @@ var notecontrol = {
 			"visibleTime": 9999999.0,
 			"yOffset": 0.0
 		});
-		if (auto_update) this.update(), renderer.sort();
+		if (auto_update) this.update();
 	},
 	/*
 	音符区域相对坐标：1350*900（rpe 坐标系），(0,0) 为正中心，向上向右为正，仅在渲染时转换为绝对坐标
@@ -148,21 +145,34 @@ var notecontrol = {
 	render_cache: [], // 储存渲染时的 x、y、y2（rpe 坐标系，y2 仅限 hold）、ang、t（类型）、id
 	update: function () {
 		this.render_cache = [];
-		var mp = new Map();
+		
+		if(notes == null) return;
+		
+		var mp = new Map(), mp2 = new Map();
 		for (let i = 0; i < notes.length; i++) {
 			let y = -450 + hi * (notes[i].startTime[0] + notes[i].startTime[1] / notes[i].startTime[2]);
 			let h = (notes[i].positionX / 5).toFixed(0) * 10000 + (y / 5).toFixed(0);
-			let t = mp.get(h) ?? 0;
-			if (t < 10) { // 堆叠过多时不显示
+			if (notes[i].type == 2) {
 				let y2 = (notes[i].type == 2) ? -450 + hi * (notes[i].endTime[0] + notes[i].endTime[1] / notes[i].endTime[2]) : y;
 				this.render_cache.push({
 					"x": notes[i].positionX,
 					"y": y,
 					"y2": y2,
-					"ang": t * 25 * Math.PI / 180,
+					"ang": 0,
 					"t": notes[i].type,
 					"id": i
 				});
+			} else {
+				let t = (mp.get(h) ?? 0);
+				if (t < 10) { // 堆叠过多时不显示
+					this.render_cache.push({
+						"x": notes[i].positionX,
+						"y": y,
+						"ang": t * 25 * Math.PI / 180,
+						"t": notes[i].type,
+						"id": i
+					});
+				}
 				mp.set(h, t + 1);
 			}
 		}
@@ -196,7 +206,7 @@ var notecontrol = {
 		}
 		for (let i = 0; i < this.render_cache.length; i++) {
 			if (this.render_cache[i].t != 2) {
-				y = this.render_cache[i].y + rdelta;
+				let y = this.render_cache[i].y + rdelta;
 				draw(this.render_cache[i].t, x1 + (x2 - x1) * ((this.render_cache[i].x + 675) / 1350), y2 - ((y + 450) / 900) * (y2 - y1), (selection.includes(this.render_cache[i].id) ? 0.13 : 0.1), this.render_cache[i].ang);
 			}
 		}
@@ -237,6 +247,7 @@ var notecontrol = {
 		return dis;
 	},
 	check_select: function (x1, y1, x2, y2, minn = Infinity) {
+		if(notes == undefined) return undefined;
 		let ans;
 		// 这里所有的距离都是平方过后的，因为 sqrt 比较麻烦
 		minn *= minn;
@@ -278,7 +289,6 @@ var eventcontrol = {
 			"start": stval,
 			"startTime": st
 		});
-		renderer.sort();
 	},
 	ex_add: (typex, st, ed, stval = 0, edval = 0) => { // 添加扩展事件
 		let t = ["scaleXEvents", "scaleYEvents", "colorEvents", "textEvents", "inclineEvents", "paintEvents"][Math.round((typex + 675) / 270)];
@@ -298,6 +308,7 @@ var eventcontrol = {
 	},
 	render: function (x1, y1, x2, y2) {
 		function draw(x, y, y2, sz /* canvas 坐标系 */, val1, val2) { // val1 是上面的数字 val2 是下面的数字
+			if (y2 < -50 || y > 950) return;
 			let w = 1089 * sz;
 			let gra = ctx.createLinearGradient(x, y, x, y2); // 渐变
 			gra.addColorStop(0, color.evu);
@@ -380,6 +391,7 @@ var eventcontrol = {
 		let maxt = [0, 0, 0], ans;
 		if (now_line.extended[typename] == null) {
 			if (typename == "colorEvents") return [255, 255, 255];
+			if (typename == "textEvents") return "";
 			else return 0;
 		}
 		now_line.extended[typename].forEach((e) => {
@@ -418,7 +430,7 @@ var sidebarcontrol = {
 		$("edit-time").addEventListener("change", () => {
 			if (selection.length == 1) {
 				let s = $("edit-time").value.split(/[:\/]/);
-				if (isBeat(s)) {
+				if (is_beat(s)) {
 					notes[selection].startTime = [Number(s[0]), Number(s[1]), Number(s[2])];
 					if (notes[selection].type != 2) $("edit-time2").value = $("edit-time").value, notes[selection].endTime = notes[selection].startTime;
 					notecontrol.update();
@@ -428,7 +440,7 @@ var sidebarcontrol = {
 		$("edit-time2").addEventListener("change", () => {
 			if (selection.length == 1) {
 				let s = $("edit-time").value.split(/[:\/]/);
-				if (isBeat(s)) {
+				if (t(s)) {
 					notes[selection].endTime = [Number(s[0]), Number(s[1]), Number(s[2])];
 					if (notes[selection].type != 2) $("edit-time").value = $("edit-time2").value, notes[selection].startTimeTime = notes[selection].endTime;
 					notecontrol.update();
@@ -445,6 +457,13 @@ var sidebarcontrol = {
 				for (let i = 0; i < selection.length; i++) notes[selection[i]].isFake = Number($("edit-t").value);
 			}
 		});
+		$("edit-visibleTime").addEventListener("change", () => {
+			if (selection.length > 0) {
+				let v = Number($("edit-visibleTime").value);
+				if (!isNaN(v))
+					for (let i = 0; i < selection.length; i++) notes[selection[i]].visibleTime = v;
+			}
+		});
 		// edit2
 		$("edit2-ease").addEventListener("change", () => {
 			if (selection_ev.length > 0) {
@@ -459,7 +478,7 @@ var sidebarcontrol = {
 		$("edit2-time").addEventListener("change", () => {
 			if (selection_ev.length == 1) {
 				let e = (evs_layer == "ex" ? now_line.extended : evs[evs_layer])[selection_ev[0][1]][selection_ev[0][0]]; let s = $("edit2-time").value.split(/[:\/]/);
-				if (isBeat(s)) {
+				if (is_beat(s)) {
 					e.startTime = [Number(s[0]), Number(s[1]), Number(s[2])];
 				}
 			}
@@ -467,7 +486,7 @@ var sidebarcontrol = {
 		$("edit2-time2").addEventListener("change", () => {
 			if (selection_ev.length == 1) {
 				let e = (evs_layer == "ex" ? now_line.extended : evs[evs_layer])[selection_ev[0][1]][selection_ev[0][0]]; let s = $("edit2-time2").value.split(/[:\/]/);
-				if (isBeat(s)) {
+				if (is_beat(s)) {
 					e.endTime = [Number(s[0]), Number(s[1]), Number(s[2])];
 				}
 			}
@@ -516,25 +535,55 @@ var sidebarcontrol = {
 				$("edit3-fa").value = now_line.father;
 			}
 		});
+		$("edit4-impl").addEventListener("click", () => {
+			let t = $("edit4-t").value;
+			let v1 = Number($("edit4-v1").value);
+			let v2 = Number($("edit4-v2").value);
+			let ease = $("edit4-ease").value;
+			let op = $("edit4-op").value;
+			let cycle = $("edit4-cycle").value.trim().split(" ");
+			let rand = Number($("edit4-rand").value);
+			if(isNaN(v1) || isNaN(v2)) return;
+			if(isNaN(rand)) rand = 0;
+			selection.sort((a, b) => {
+				return cmp(notes[a].startTime, notes[b].startTime) ? -1 : 1;
+			});
+			for (let i = 0; i < selection.length; i++) {
+				let v = v1 + (v2 - v1) * calcease(ease, i / (selection.length - 1));
+				if(!isNaN(Number(cycle[i % cycle.length]))) v *= cycle[i % cycle.length];
+				switch (op) {
+					case "add": notes[selection[i]][t] += v; break;
+					case "set": notes[selection[i]][t] = v; break;
+					case "mul": notes[selection[i]][t] *= v; break;
+					case "max": notes[selection[i]][t] = Math.max(notes[selection[i]][t], v); break;
+					case "min": notes[selection[i]][t] = Math.min(notes[selection[i]][t], v); break;
+					case "flip": notes[selection[i]][t] = 2 * v - notes[selection[i]][t]; break;
+				}
+				console.log(op, v1, v2, v, selection[i]);
+				notes[selection[i]][t] += (Math.random() * 2 - 1) * rand;
+			}
+			notecontrol.update();
+		});
 
-		sidebarcontrol.edit_line();
+		sidebarcontrol.edit_update();
 	},
-	edit_note: () => {
+	edit_update: () => {
+		function show(i) {
+			$("edit" + (i == 1 ? "" : i)).style.display = "block";
+			for (let j = 1; j <= 4; j++)
+				if (i != j) $("edit" + (j == 1 ? "" : j)).style.display = "none";
+		}
 		if (selection.length == 1) {
-			$("edit").style.display = "block";
+			show(1);
 			$("edit-x").value = notes[selection[0]].positionX;
 			$("edit-y").value = notes[selection[0]].yOffset;
 			$("edit-time").value = notes[selection[0]].startTime[0] + ":" + notes[selection[0]].startTime[1] + "/" + notes[selection].startTime[2];
 			$("edit-time2").value = notes[selection[0]].endTime[0] + ":" + notes[selection[0]].endTime[1] + "/" + notes[selection].endTime[2];
 			$("edit-d").value = notes[selection[0]].above;
 			$("edit-t").value = notes[selection[0]].isFake;
-		}
-		$("edit2").style.display = "none";
-		$("edit3").style.display = "none";
-	},
-	edit_event: () => {
-		if (selection_ev.length == 1) {
-			$("edit2").style.display = "block";
+			$("edit-visibleTime").value = notes[selection[0]].visibleTime;
+		} else if (selection_ev.length == 1) {
+			show(2);
 			if (evs_layer == "ex") var e = now_line.extended[selection_ev[0][1]][selection_ev[0][0]];
 			else var e = evs[evs_layer][selection_ev[0][1]][selection_ev[0][0]];
 			if (selection_ev[0][1] == "speedEvents") $("edit2-ease").value = 1;
@@ -544,33 +593,69 @@ var sidebarcontrol = {
 			$("edit2-time2").value = e.endTime[0] + ":" + e.endTime[1] + "/" + e.endTime[2];
 			$("edit2-st").value = e.start;
 			$("edit2-ed").value = e.end;
+		} else if (selection.length > 1) {
+			show(4);
+		} else {
+			show(3);
+			if (now_line != undefined) {
+				$("edit3-name").value = now_line.Name;
+				$("edit3-fa").value = now_line.father;
+			}
 		}
-		$("edit").style.display = "none";
-		$("edit3").style.display = "none";
-	},
-	edit_line: () => { // 退出音符和事件的编辑
-		if (now_line != undefined) {
-			$("edit3").style.display = "block";
-			$("edit3-name").value = now_line.Name;
-			$("edit3-fa").value = now_line.father;
-		}
-		$("edit").style.display = "none";
-		$("edit2").style.display = "none";
-	},
+	}
 }
 // 下方设置面板管理 / 界面设置
 // ============================================================================================
 var settingscontrol = {
 	load: () => { // js --> UI
-		$("s-bpm").value = bpm;
 		$("s-shu").value = shu;
 		$("s-heng").value = heng;
+		if (bpm.length > 1) $("s-bpm").innerText = "混合"
+		else $("s-bpm").innerText = bpm[0].bpm;
+
+		$("bpmlist").innerHTML = "";
+		for (let i = 0; i < bpm.length; i++) {
+			let div = document.createElement("div");
+			div.className = "bpmlist-show";
+
+			div.appendChild(document.createTextNode("bpm: "));
+
+			let e = document.createElement("input");
+			e.value = bpm[i].bpm;
+			e.style.marginRight = "5px";
+			e.addEventListener("change", (arg) => {
+				console.log(e.value, e, arg);
+				if (isNaN(Number(e.value))) e.value = bpm[i].bpm;
+				else bpm[i].bpm = Number(e.value);
+				settingscontrol.load();
+			});
+			div.appendChild(e);
+
+			div.appendChild(document.createTextNode("开始时间: "));
+
+			let e2 = document.createElement("input");
+			e2.value = bpm[i].startTime[0] + ":" + bpm[i].startTime[1] + "/" + bpm[i].startTime[2];
+			e2.addEventListener("change", () => {
+				let s = e2.value.split(/[:\/]/);
+				if (is_beat(s)) bpm[i].startTime = [Number(s[0]), Number(s[1]), Number(s[2])];
+				else e2.value = bpm[i].startTime[0] + ":" + bpm[i].startTime[1] + "/" + bpm[i].startTime[2];
+			});
+			div.appendChild(e2);
+
+			let e3 = document.createElement("button");
+			e3.innerHTML = "&times;";
+			e3.addEventListener("click", () => {
+				if (bpm.length > 1) {
+					bpm.splice(i, 1);
+					settingscontrol.load();
+				}
+			});
+			div.appendChild(e3);
+
+			$("bpmlist").appendChild(div);
+		}
 	},
 	init: () => { // UI --> js
-		$("s-bpm").addEventListener('change', () => {
-			if (isNaN(Number($("s-bpm").value))) $("s-bpm").value = bpm;
-			else bpm = Number($("s-bpm").value);
-		})
 		$("s-shu").addEventListener('change', () => {
 			if (isNaN(Number($("s-shu").value)) || Number($("s-shu").value) > 100) $("s-shu").value = shu;
 			else shu = Number($("s-shu").value);
@@ -579,6 +664,13 @@ var settingscontrol = {
 			if (isNaN(Number($("s-heng").value)) || Number($("s-heng").value) > 100) $("s-heng").value = heng;
 			else heng = Number($("s-heng").value);
 		})
+		$("s-bpm").addEventListener('click', () => {
+			$("window-bpmlist").style.display = 'flex';
+		});
+		$("bpmlist-add").addEventListener('click', () => {
+			bpm.push({ "startTime": bpm[bpm.length - 1].startTime, "bpm": bpm[bpm.length - 1].bpm })
+			settingscontrol.load();
+		});
 	},
 	settings: {
 		decimal: 1, // 显示事件的值时，保留几位小数
@@ -601,7 +693,7 @@ function main() {
 	if (playing == 1) {
 		playercontrol.updateTime();
 		// 直接渲染画面
-		renderer.main([Math.floor(-rdelta / hi), -rdelta % hi, hi]);
+		renderer.main([Math.floor(-rdelta / hi), -rdelta % hi, hi], 1);
 
 		ctx.fillStyle = color.background2;
 		ctx.fillRect(0, 0, 1600, renderer.y1);
@@ -662,8 +754,16 @@ function main() {
 		// 渲染画面（半透明）
 		if (settingscontrol.settings.player == 1) {
 			ctx.globalAlpha = 0.4;
-			renderer.main([Math.floor(-rdelta / hi), -rdelta % hi, hi]);
+			renderer.pre();
+			if (renderer) renderer.main([Math.floor(-rdelta / hi), -rdelta % hi, hi]);
 			ctx.globalAlpha = 1;
+		}
+
+		// 渲染选择框
+		if (mousedata.sel_rect.x1 != null) {
+			ctx.fillStyle = color.select_rect;
+			let y1 = nrr.y2 - (mousedata.sel_rect.y1 * hi + rdelta);
+			ctx.fillRect(mousedata.sel_rect.x1, y1, mousedata.x - mousedata.sel_rect.x1, mousedata.y - y1);
 		}
 	}
 }
@@ -673,16 +773,16 @@ var playercontrol = {
 	startTime: null, // 单位：毫秒
 	startChartTime: null, // 单位：秒
 	play: function () {
-		renderer.sort();
+		renderer.pre();
 		let musicplayer = $("music-player");
 		if (musicplayer.src == "") {
 			playing = 1;
-			this.startChartTime = -rdelta / hi * (60 / bpm);
+			this.startChartTime = beat_to_sec(-rdelta / hi);
 			this.startTime = performance.now();
 		} else {
-			musicplayer.currentTime = -rdelta / hi * (60 / bpm);
+			musicplayer.currentTime = beat_to_sec(-rdelta / hi);
 			musicplayer.play().then(() => {
-				this.startChartTime = -rdelta / hi * (60 / bpm);
+				this.startChartTime = beat_to_sec(-rdelta / hi);
 				this.startTime = performance.now();
 				// console.log(this.startTime, rdelta, this.startChartTime);
 				playing = 1;
@@ -696,13 +796,12 @@ var playercontrol = {
 		if (playing == 0) this.play();
 		else this.pause();
 	}, updateTime: function () {
-		rdelta = -hi * (this.startChartTime + (performance.now() - this.startTime) / 1000) / (60 / bpm);
+		rdelta = -hi * sec_to_beat(this.startChartTime + (performance.now() - this.startTime) / 1000);
 	}
 }
 // 操作：键盘、其他
 // ============================================================================================
-function put_qwer(key) { // 识别 q,w,e,r 键
-	// 这里专门搞一个函数出来，是为了适配手机端！
+function put_qwer(key) { // 识别 q,w,e,r 键；这里专门搞一个函数出来，是为了适配手机端！
 	if (key == "q") {
 		notecontrol.put(nrr.x1, nrr.y1, nrr.x2, nrr.y2, mousedata.x, mousedata.y, 1);
 	} else if (key == "e") {
@@ -716,7 +815,7 @@ function put_qwer(key) { // 识别 q,w,e,r 键
 				if (cmp(put_ev_st, tmp[1])) {
 					if (evs_layer == "ex") { // 添加扩展事件
 						console.log(put_ev_x, tmp[1]);
-						eventcontrol.ex_add(put_ev_x, put_ev_st, tmp[1], eventcontrol.ex_getval_typex(tmp[0], put_ev_st), (put_ev_x == -135 ? [255, 255, 255] : 0)); // 特判 colorEvents
+						eventcontrol.ex_add(put_ev_x, put_ev_st, tmp[1], eventcontrol.ex_getval_typex(tmp[0], put_ev_st), (put_ev_x == -135 ? [255, 255, 255] : (put_ev_x == 135 ? "" : 0)));
 					} else {
 						eventcontrol.add(put_ev_x, put_ev_st, tmp[1], eventcontrol.getval_typex(tmp[0], put_ev_st));
 					}
@@ -758,7 +857,7 @@ function delete_selection() {
 document.addEventListener('keydown', function (event) {
 	if (event.key == "Control") control_down = 1;
 	if (mousedata.in == 0) return;
-	let key = event.key.toLowerCase(); // v3.1 修复
+	let key = event.key.toLowerCase();
 	console.log("按键 " + key + " " + event.keyCode);
 	if (key == "q" || key == "e" || key == "w" || key == "r") put_qwer(key);
 	else if (key == "delete") delete_selection();
@@ -830,7 +929,10 @@ document.addEventListener('wheel', (e) => {
 	rdelta += e.deltaY;
 	if (rdelta > 100) rdelta = 100;
 });
-var mousedata = { in: 0, x: 0, y: 0, down: 0, moved: 0 }; // canvas 坐标系（moved：鼠标按下后是否移动过）
+var mousedata = {
+	in: 0, x: 0, y: 0, down: 0, moved: 0, drag: null,
+	sel_rect: { x1: null, y1: null, x2: null, y2: null }
+}; // canvas 坐标系（drag：拖动中的音符，null表示没有拖动，moved：鼠标按下后是否移动过，sel_rect：选中区域，x1=null表示没有）
 $("cvs").addEventListener("mousemove", function (event) {
 	const rect = $("cvs").getBoundingClientRect(); // 计算鼠标相对于 canvas 内部的坐标，考虑缩放
 	mousedata.x = (event.clientX - rect.left) * $("cvs").width / rect.width;
@@ -847,25 +949,100 @@ $("cvs").addEventListener("mousemove", function (event) {
 	}
 	mousedata.moved = 1;
 });
-$("cvs").addEventListener("mouseout", function (event) {
+$("cvs").addEventListener("mouseout", function () {
 	mousedata.in = 0;
 });
-$("cvs").addEventListener("mousedown", () => {
-	mousedata.down = 1;
-	mousedata.drag = null;
-	mousedata.moved = 0;
-	if (mousedata.x < (nrr.x2 + evrr.x1) / 2) { // 点击到音符区域
-		let p = notecontrol.check_select(nrr.x1, nrr.y1, nrr.x2, nrr.y2, 80); // 距离 < 80 才触发拖动，不容易误触
-		if (p != null && notes[p].type != 2) {
-			mousedata.drag = p;
-			console.log(mousedata.drag);
+$("cvs").addEventListener("mousedown", (event) => {
+	if (event.button == 0) {
+		event.preventDefault();
+		mousedata.down = 1;
+		mousedata.drag = null;
+		mousedata.moved = 0;
+		if (!edit_event || mousedata.x < (nrr.x2 + evrr.x1) / 2) { // 点击到音符区域
+			if (event.shiftKey) {
+				if (mousedata.sel_rect.x1 != null) { // 拖动选中区域
+					mousedata.sel_rect.x2 = mousedata.x;
+					mousedata.sel_rect.y2 = ((nrr.y2 - mousedata.y) - rdelta) / hi;
+
+					let x1 = Math.min(mousedata.sel_rect.x1, mousedata.sel_rect.x2);
+					let x2 = Math.max(mousedata.sel_rect.x1, mousedata.sel_rect.x2);
+					let y1 = Math.min(mousedata.sel_rect.y1, mousedata.sel_rect.y2);
+					let y2 = Math.max(mousedata.sel_rect.y1, mousedata.sel_rect.y2);
+					function to(s) {
+						return s[0] + s[1] / s[2];
+					}
+					console.log(x1, y1, x2, y2);
+					for (let i = 0; i < notes.length; i++) {
+						if(selection.includes(i)) continue;
+						let tx = nrr.x1 + (nrr.x2 - nrr.x1) * ((notes[i].positionX + 675) / 1350); // 转换到 canvas 坐标系
+						if (notes[i].type == 2) {
+							if (x1 <= tx && tx <= x2 && (y1 <= to(notes[i].startTime) && to(notes[i].startTime) <= y2 || y1 <= to(notes[i].endTime) && to(notes[i].endTime) <= y2)) selection.push(i);
+						} else {
+							if (x1 <= tx && tx <= x2 && y1 <= to(notes[i].startTime) && to(notes[i].startTime) <= y2) selection.push(i);
+						}
+					}
+
+					mousedata.sel_rect.x1 = null;
+					mousedata.sel_rect.y1 = null;
+					sidebarcontrol.edit_update();
+				} else {
+					mousedata.sel_rect.x1 = mousedata.x;
+					mousedata.sel_rect.y1 = ((nrr.y2 - mousedata.y) - rdelta) / hi;
+				}
+				mousedata.moved = 1; // 防止触发音符选择
+			} else {
+				let p = notecontrol.check_select(nrr.x1, nrr.y1, nrr.x2, nrr.y2, 80); // 距离 < 80 才触发拖动，不容易误触
+				if (p != null && notes[p].type != 2) {
+					mousedata.drag = p;
+					console.log(mousedata.drag);
+				}
+			}
 		}
 	}
 });
-document.addEventListener("mouseup", () => {
-	mousedata.down = 0;
-	if (mousedata.drag != null) {
-		mousedata.drag = null;
+document.addEventListener("mouseup", (event) => {
+	if (event.button == 0) {
+		event.preventDefault();
+		mousedata.down = 0;
+		if (mousedata.drag != null) {
+			mousedata.drag = null;
+		}
+		if (!mousedata.moved) { // 单击
+			if (mode != "computer") {
+				if (edit_event && mousedata.x > (nrr.x2 + evrr.x1) / 2) put_qwer("r"); // 点击到事件区域，均视为放置事件
+				else put_qwer(mode);
+			} else {
+				if (edit_event && mousedata.x > (nrr.x2 + evrr.x1) / 2) { // 点击到事件区域
+					let p = eventcontrol.check_select(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
+					if (p == undefined) return;
+					selection = [];
+					if (control_down == 0) {
+						if (selection_ev.length == 1 && cmparray(selection_ev[0], p)) selection_ev = [];
+						else selection_ev = [p];
+					} else {
+						if (selection_ev.includes(p)) {
+							selection_ev.splice(selection.indexOf(p), 1);
+						}
+						else selection_ev.push(p);
+					}
+					sidebarcontrol.edit_update();
+				} else { // 点击到音符区域
+					let p = notecontrol.check_select(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
+					if (p == undefined) return;
+					selection_ev = [];
+					if (control_down == 0) {
+						if (selection[0] == p && selection.length == 1) selection = [];
+						else selection = [p];
+					} else {
+						if (selection.includes(p)) {
+							selection.splice(selection.indexOf(p), 1);
+						}
+						else selection.push(p);
+					}
+					sidebarcontrol.edit_update();
+				}
+			}
+		}
 	}
 });
 
@@ -884,43 +1061,6 @@ document.addEventListener('touchmove', function (e) {
 		if (rdelta > 100) rdelta = 100;
 	}
 }, { passive: false });
-
-$("cvs").addEventListener('click', function () {
-	if (mousedata.moved == 1) return 0;
-	if (edit_event && mousedata.x > (nrr.x2 + evrr.x1) / 2) { // 点击到事件区域
-		let p = eventcontrol.check_select(evrr.x1, evrr.y1, evrr.x2, evrr.y2);
-		if (p == undefined) return;
-		selection = [];
-		if (control_down == 0) {
-			if (selection_ev.length == 1 && cmparray(selection_ev[0], p)) selection_ev = [], sidebarcontrol.edit_line();
-			else selection_ev = [p], sidebarcontrol.edit_event();
-		} else {
-			if (selection_ev.includes(p)) {
-				selection_ev.splice(selection.indexOf(p), 1);
-				if (selection_ev.length == 0) sidebarcontrol.edit_line();
-			}
-			else selection_ev.push(p);
-		}
-	} else { // 点击到音符区域
-		if (mode == "computer") {
-			let p = notecontrol.check_select(nrr.x1, nrr.y1, nrr.x2, nrr.y2);
-			if (p == undefined) return;
-			selection_ev = [];
-			if (control_down == 0) {
-				if (selection[0] == p && selection.length == 1) selection = [], sidebarcontrol.edit_line();
-				else selection = [p], sidebarcontrol.edit_note();
-			} else {
-				if (selection.includes(p)) {
-					selection.splice(selection.indexOf(p), 1);
-					if (selection.length == 0) sidebarcontrol.edit_line();
-				}
-				else selection.push(p);
-			}
-		} else {
-			put_qwer(mode);
-		}
-	}
-});
 for (let i = 0; i <= 4; i++) {
 	$("mode").children[i].addEventListener('click', () => {
 		mode = ["computer", "q", "w", "e", "r"][i];
@@ -928,7 +1068,7 @@ for (let i = 0; i <= 4; i++) {
 	});
 }
 $("fillnotes-open").addEventListener('click', () => {
-	$('window').style.display = 'flex';
+	$("window-fillnotes").style.display = 'flex';
 	if (selection.length == 1) {
 		$("fillnotes-time").value = notes[selection[0]].startTime[0] + ":" + notes[selection[0]].startTime[1] + "/" + notes[selection[0]].startTime[2];
 		$("fillnotes-x").value = notes[selection[0]].positionX;
@@ -951,13 +1091,13 @@ $("fillnotes-open").addEventListener('click', () => {
 $("fillnotes").addEventListener('click', () => {
 	// st 填充到 ed，每次增加 density
 	let st = $("fillnotes-time").value.split(/[:\/]/);
-	if (!isBeat(st)) return;
+	if (!is_beat(st)) return;
 	st = [Number(st[0]), Number(st[1]), Number(st[2])];
 	let ed = $("fillnotes-time2").value.split(/[:\/]/);
-	if (!isBeat(ed)) return;
+	if (!is_beat(ed)) return;
 	ed = [Number(ed[0]), Number(ed[1]), Number(ed[2])];
 	let density = $("fillnotes-density").value.split(/[:\/]/);;
-	if (!isBeat(density)) return;
+	if (!is_beat(density)) return;
 	density = [Number(density[0]), Number(density[1]), Number(density[2])];
 
 	// x 坐标的区间
@@ -978,5 +1118,4 @@ $("fillnotes").addEventListener('click', () => {
 	notecontrol.update();
 });
 
-
-setInterval(main, 1000 / 60); // 60 帧
+setInterval(main, 1000 / 60);
