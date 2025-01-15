@@ -74,3 +74,36 @@ function calcease(t, x) { // 类型，比值（0~1）
 		case 28: return x < 0.5 ? (1 - easeOutBounce(1 - 2 * x)) / 2 : (1 + easeOutBounce(2 * x - 1)) / 2;
 	}
 }
+
+function is_beat(e) {
+	return e.length == 3 && !isNaN(e[0]) && !isNaN(e[1]) && !isNaN(e[2]);
+}
+function beat_to_sec(beat) {
+	let f = (a => a[0] + a[1] / a[2]);
+	if (Array.isArray(beat)) beat = f(beat);
+	if (bpm.length == 1) return 60 / bpm[0].bpm * beat; // bpm 只有一种的时候，就不需要使用复杂的逻辑了，提高效率
+	let sec = 0;
+	for (let i = 0; i < bpm.length; i++) {
+		if (i == bpm.length - 1 || beat < f(bpm[i + 1].startTime)) {
+			sec += 60 / bpm[i].bpm * (beat - f(bpm[i].startTime))
+			return sec;
+		} else {
+			sec += 60 / bpm[i].bpm * (f(bpm[i + 1].startTime) - f(bpm[i].startTime))
+		}
+	}
+}
+function sec_to_beat(sec) {
+	let f = (a => a[0] + a[1] / a[2]);
+	if (bpm.length == 1) return sec * bpm[0].bpm / 60; // bpm 只有一种的时候，就不需要使用复杂的逻辑了，提高效率
+	let beat = 0;
+	for (let i = 0; i < bpm.length; i++) {
+		let totsec = i == bpm.length - 1 ? Infinity : 60 / bpm[i].bpm * f(sub(bpm[i + 1].startTime, bpm[i].startTime));
+		if (sec < totsec) {
+			beat += sec * bpm[i].bpm / 60;
+			return beat;
+		} else {
+			sec -= totsec;
+			beat = bpm[i + 1].startTime[0] + bpm[i + 1].startTime[1] / bpm[i + 1].startTime[2];
+		}
+	}
+}
