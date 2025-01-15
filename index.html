@@ -3,7 +3,7 @@
 
 <head>
 	<meta charset="UTF-8">
-	<title>open phiedit 3</title>
+	<title>open phiedit 4</title>
 </head>
 
 <body>
@@ -60,18 +60,23 @@
 					<img src="img/5.svg" style="height: 100%;">
 					<div style="margin-left: auto; display:flex">
 						<img src="img/icon1.svg" style="height: 100%;" id="mobile-phone-play">
-						<div style="background: rgb(147, 147, 147); text-align:'center'; padding: 10px;"
+						<div style="background: rgb(147, 147, 147); text-align:'center'; padding: 10px; margin-left: 3px;"
 							id="mobile-phone-delete">删除</div>
 					</div>
 				</div>
 				<canvas id="cvs" width="1600px" height="900px" style="width: 100%;">
 				</canvas>
 			</div>
+			<!-- <div id="scrollbar-container">
+				<div id="scrollbar">
+
+				</div>
+			</div> -->
 			<div style="width: 25%; display:none" id="edit">
 				<h3>音符编辑</h3>
-				X坐标：<input id="edit-x" type="number"></input><br>
-				起始时间：<input id="edit-time"></input><br>
-				结束时间：<input id="edit-time2"></input><br>
+				X坐标：<input id="edit-x" type="number"><br>
+				起始时间：<input id="edit-time"><br>
+				结束时间：<input id="edit-time2"><br>
 				朝向：<select id="edit-d">
 					<option value="1">Up</option>
 					<option value="2">Down</option>
@@ -82,7 +87,8 @@
 					<option value="1">假音符</option>
 				</select>
 				<br>
-				Y轴偏移：<input id="edit-y" type="number"></input><br>
+				Y轴偏移：<input id="edit-y" type="number"><br>
+				可视时间：<input id="edit-visibleTime" type="number"><br>
 			</div>
 			<div style="width: 25%; display:none" id="edit2">
 				<h3>事件编辑</h3>
@@ -118,43 +124,102 @@
 					<option value="28">28 bounce io</option>
 				</select>
 				<br>
-				起始时间：<input id="edit2-time"></input><br>
-				结束时间：<input id="edit2-time2"></input><br>
-				起始值：<input id="edit2-st"></input><br>
-				结束值：<input id="edit2-ed"></input><br>
+				起始时间：<input id="edit2-time"><br>
+				结束时间：<input id="edit2-time2"><br>
+				起始值：<input id="edit2-st"><br>
+				结束值：<input id="edit2-ed"><br>
 			</div>
 			<div style="width: 25%; display:block" id="edit3">
 				<h3>判定线编辑</h3>
-				名称：<input id="edit3-name"></input><br>
-				父线：<input id="edit3-fa" type="number"></input><br>
+				名称：<input id="edit3-name"><br>
+				父线：<input id="edit3-fa" type="number"><br>
+			</div>
+			<div style="width: 25%; display:none" id="edit4">
+				<h3>音符批量编辑</h3>
+				数值种类：
+				<select id="edit4-t">
+					<option value="positionX">X</option>
+					<option value="startTime">起始时间</option>
+					<option value="endTime">结束时间</option>
+					<option value="yOffset">Y轴偏移</option>
+					<option value="line">所在判定线</option>
+				</select><br>
+				数值下界：<input id="edit4-v1"><br>
+				数值上界：<input id="edit4-v2"><br>
+				缓动类型：<select id="edit4-ease">
+					<option value="1">1 linear</option>
+					<option value="2">2 sin out</option>
+					<option value="3">3 sin in</option>
+					<option value="4">4 quad out</option>
+					<option value="5">5 quad in</option>
+					<option value="6">6 sin io</option>
+					<option value="7">7 quad io</option>
+					<option value="8">8 cubic out</option>
+					<option value="9">9 cubic in</option>
+					<option value="10">10 quart out</option>
+					<option value="11">11 quart in</option>
+					<option value="12">12 cubic io</option>
+					<option value="13">13 quart io</option>
+					<option value="14">14 quint out</option>
+					<option value="15">15 quint in</option>
+					<option value="16">16 expo out</option>
+					<option value="17">17 expo in</option>
+					<option value="18">18 circ out</option>
+					<option value="19">19 circ in</option>
+					<option value="20">20 back out</option>
+					<option value="21">21 back in</option>
+					<option value="22">22 circ in</option>
+					<option value="23">23 back io</option>
+					<option value="24">24 elastic out</option>
+					<option value="25">25 elastic in</option>
+					<option value="26">26 bounce out</option>
+					<option value="27">27 bounce in</option>
+					<option value="28">28 bounce io</option>
+				</select>
+				<br>
+				修改方式：<select id="edit4-op">
+					<option value="add">增加此值</option>
+					<option value="set">设为此值</option>
+					<option value="mul">乘以此值</option>
+					<option value="max">取最大</option>
+					<option value="min">取最小</option>
+					<option value="flip">以此值为中心翻转</option>
+				</select>
+				<br>
+				周期数列：<input id="edit4-cycle" value="1">
+				<br>
+				扰动：<input id="edit4-rand" type="number" value="0"><br>
+				<button id="edit4-impl">执行</button>
 			</div>
 		</div>
 		基本信息设置栏：
 		<div style="display:flex">
 			bpm：
-			<input value="80" id="s-bpm" style="width: 100px">
+			<div id="s-bpm" style="border: 1px solid; padding: 3px; user-select: none; background: #EEE;">80</div>
+			&nbsp;
 			竖向格子数：
 			<input value="1" id="s-shu" style="width: 100px">
+			&nbsp;
 			横向格子数：
 			<input value="1" id="s-heng" style="width: 100px">
 		</div>
 	</div>
-	<div id="window">
+	<div class="window" id="window-fillnotes">
 		<div class="content">
 			<h2 style="margin-top:0px; margin-left:5px;">曲线填充音符</h2>
 			测试功能<br><br>
 			<button class="close-btn" onclick="this.parentNode.parentNode.style.display='none'">&times;</button>
-			起始时间：<input id="fillnotes-time"></input><br>
-			结束时间：<input id="fillnotes-time2"></input><br>
+			起始时间：<input id="fillnotes-time"><br>
+			结束时间：<input id="fillnotes-time2"><br>
 			<input type="checkbox" id="fillnotes-flag">包含边界<br>
-			x 起点<input id="fillnotes-x"></input><br>
-			x 终点：<input id="fillnotes-x2"></input><br>
+			x 起点<input id="fillnotes-x"><br>
+			x 终点：<input id="fillnotes-x2"><br>
 			填充：<select id="fillnotes-t">
 				<option value="1">tap</option>
 				<option value="3">flick</option>
 				<option value="4" selected>drag</option>
 			</select><br>
-			密度：<input id="fillnotes-density" value="0:1/4"></input><br>
+			密度：<input id="fillnotes-density" value="0:1/4"><br>
 			曲线类型：<select id="fillnotes-ease">
 				<option value="1">1 linear</option>
 				<option value="2">2 sin out</option>
@@ -188,9 +253,19 @@
 			<button id="fillnotes">确认</button>
 		</div>
 	</div>
+	<div class="window" id="window-bpmlist">
+		<div class="content" style="overflow-y: auto;">
+			<h2 style="margin-top:0px; margin-left:5px;">BPM 管理</h2>
+			<button class="close-btn" onclick="this.parentNode.parentNode.style.display='none'">&times;</button>
+			<div id="bpmlist">
+
+			</div>
+			<button id="bpmlist-add">添加</button>
+		</div>
+	</div>
 	<style>
 		/* 弹出窗口 */
-		#window {
+		.window {
 			background: #0009;
 			z-index: 1;
 			width: 100%;
@@ -295,6 +370,32 @@
 
 		select {
 			user-select: none;
+		}
+
+		/* 触控模式 */
+		#mode>img {
+			margin-left: 3px;
+		}
+
+		/* bpm list */
+		.bpmlist-show {
+			margin: 5px 5px 5px 5px;
+			display: flex;
+			border: 1px solid #BBB;
+			padding: 10px;
+		}
+		.bpmlist-show > input {
+			height: 15px;
+		}
+
+		#scrollbar {
+			height: 30px;
+			width: 12px;
+			background: #AAA;
+		}
+		#scrollbar-container {
+			width: 12px;
+			border: 1px solid #000;
 		}
 	</style>
 	<script src="math.js"></script>
