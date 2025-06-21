@@ -16,13 +16,12 @@ let renderer = {
 		for (let i = 0; i < all_data.judgeLineList.length; i++) {
 			let line = all_data.judgeLineList[i];
 			for (let j = 0; j < line.eventLayers.length; j++) {
-				// const e = ["moveXEvents", "moveYEvents", "rotateEvents", "", ""];
 				if (line.eventLayers[j] != null) {
-					line.eventLayers[j].moveXEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
-					line.eventLayers[j].moveYEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
-					line.eventLayers[j].rotateEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
-					line.eventLayers[j].alphaEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
-					line.eventLayers[j].speedEvents.sort((a, b) => to(a.startTime) - to(b.startTime));
+					for(e of ["moveXEvents", "moveYEvents", "rotateEvents", "alphaEvents", "speedEvents"]) {
+						// 一定要先检查是否存在，有些层级可能没有事件
+						if (line.eventLayers[j][e] != null)
+							line.eventLayers[j][e].sort((a, b) => to(a.startTime) - to(b.startTime));
+					}
 				}
 			}
 			if (line.notes != null) {
@@ -103,7 +102,7 @@ let renderer = {
 	getval: function (line, e, t) { // 多层级普通事件：line 为判定线信息，e 为事件名，t 为一个带分数表示时间
 		let s = 0;
 		for (let i = 0; i < line.eventLayers.length; i++)
-			if (line.eventLayers[i] != null) s += this.basic_getval(line.eventLayers[i][e], t);
+			if (line.eventLayers[i] != null && line.eventLayers[i][e] != null) s += this.basic_getval(line.eventLayers[i][e], t);
 		return s;
 	},
 	basic_getdis: function (e, t) { // 单层级求距离：e 为速度事件 Array，t 为一个带分数表示时间（不考虑 bpmfactor）
@@ -137,7 +136,7 @@ let renderer = {
 	getdis: function (line, t) { // 多层级求距离：line 为判定线信息，t 为一个带分数表示时间（不考虑 bpmfactor）
 		let s = 0;
 		for (let i = 0; i < line.eventLayers.length; i++)
-			if (line.eventLayers[i] != null) s += this.basic_getdis(line.eventLayers[i].speedEvents, t);
+			if (line.eventLayers[i] != null && line.eventLayers[i].speedEvents != null) s += this.basic_getdis(line.eventLayers[i].speedEvents, t);
 		return s;
 	},
 	order: [],
@@ -159,7 +158,7 @@ let renderer = {
 			if ((all_data.judgeLineList[i].father ?? -1) == -1)
 				dfs(i, this.order);
 		for (let i = 0; i < n; i++)
-			if(!vis[i])
+			if (!vis[i])
 				this.order.push(i), console.warn("父线错误：出现循环");
 	},
 	cache: null,
