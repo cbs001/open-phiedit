@@ -3,7 +3,7 @@
 
 <head>
 	<meta charset="UTF-8">
-	<title>open phiedit 4</title>
+	<title>open phiedit 5</title>
 </head>
 
 <body>
@@ -34,13 +34,25 @@
 					<div id="m-event">打开/关闭事件</div>
 					<div id="m-touch">打开/关闭触控模式</div>
 					<div id="m-player">打开/关闭预览</div>
+					<div id="m-copy">复制模式：内部剪贴板</div>
+				</div>
+			</div>
+			<div class="menu">
+				帮助
+				<div>
+					<div id="m-help1">制谱器帮助</div>
+					<div id="m-help2">pez打包帮助</div>
 				</div>
 			</div>
 		</div>
 		<!-- 操作栏 -->
 		<div style="display:flex">
 			<!-- 判定线选择 -->
-			<select id="lines" style="width: 30%"></select>
+			<div id="line-selector">
+				<div id="line-selected"></div>
+				<ul id="lines" style="width: 30%; display: none"></ul>
+			</div>
+			<span style="-webkit-user-select: none; user-select: none;">&nbsp;</span>
 			<!-- 事件层级选择 -->
 			<div style="display:flex">
 				<div id="eventlayer-ex" class="eventlayer-btn">ex</div>
@@ -51,7 +63,7 @@
 			</div>
 		</div>
 		<div style="display:flex">
-			<div style="border: 1px solid black; width: 75%;">
+			<div style="border: 1px solid black; width: 72%;">
 				<div id="mode" style="display:flex">
 					<img src="img/1.svg" style="height: 100%;">
 					<img src="img/2.svg" style="height: 100%;">
@@ -60,18 +72,13 @@
 					<img src="img/5.svg" style="height: 100%;">
 					<div style="margin-left: auto; display:flex">
 						<img src="img/icon1.svg" style="height: 100%;" id="mobile-phone-play">
-						<div style="background: rgb(147, 147, 147); text-align:'center'; padding: 10px; margin-left: 3px;"
+						<div style="background: rgb(147, 147, 147); text-align:'center'; padding: 10px; margin-left: 3px; user-select: none;"
 							id="mobile-phone-delete">删除</div>
 					</div>
 				</div>
 				<canvas id="cvs" width="1600px" height="900px" style="width: 100%;">
 				</canvas>
 			</div>
-			<!-- <div id="scrollbar-container">
-				<div id="scrollbar">
-
-				</div>
-			</div> -->
 			<div style="width: 25%; display:none" id="edit">
 				<h3>音符编辑</h3>
 				X坐标：<input id="edit-x" type="number"><br>
@@ -133,6 +140,7 @@
 				<h3>判定线编辑</h3>
 				名称：<input id="edit3-name"><br>
 				父线：<input id="edit3-fa" type="number"><br>
+				bpm倍率：<input id="edit3-bpmfactor" type="number"><br>
 			</div>
 			<div style="width: 25%; display:none" id="edit4">
 				<h3>音符批量编辑</h3>
@@ -142,7 +150,7 @@
 					<option value="startTime">起始时间</option>
 					<option value="endTime">结束时间</option>
 					<option value="yOffset">Y轴偏移</option>
-					<option value="line">所在判定线</option>
+					<option value="line">所在判定线（只支持“设为此值”）</option>
 				</select><br>
 				数值下界：<input id="edit4-v1"><br>
 				数值上界：<input id="edit4-v2"><br>
@@ -192,16 +200,15 @@
 				<button id="edit4-impl">执行</button>
 			</div>
 		</div>
-		基本信息设置栏：
 		<div style="display:flex">
 			bpm：
 			<div id="s-bpm" style="border: 1px solid; padding: 3px; user-select: none; background: #EEE;">80</div>
 			&nbsp;
 			竖向格子数：
-			<input value="1" id="s-shu" style="width: 100px">
+			<input value="1" type="number" id="s-shu" style="width: 100px">
 			&nbsp;
 			横向格子数：
-			<input value="1" id="s-heng" style="width: 100px">
+			<input value="1" type="number" id="s-heng" style="width: 100px">
 		</div>
 	</div>
 	<div class="window" id="window-fillnotes">
@@ -263,11 +270,26 @@
 			<button id="bpmlist-add">添加</button>
 		</div>
 	</div>
+	<div class="window" id="window-help">
+		<div class="content" style="overflow-y: auto;">
+			<h2 style="margin-top:0px; margin-left:5px;">帮助页面</h2>
+			<button class="close-btn" onclick="this.parentNode.parentNode.style.display='none'">&times;</button>
+			<div id="help-content">
+
+			</div>
+		</div>
+	</div>
+	<div id="contextmenu">
+		<div id="contextmenu-toTap">to Tap</div>
+		<div id="contextmenu-toDrag">to Drag</div>
+		<div id="contextmenu-toFlick">to Flick</div>
+		<div id="contextmenu-filp">绕 y 轴翻转</div>
+	</div>
 	<style>
 		/* 弹出窗口 */
 		.window {
 			background: #0009;
-			z-index: 1;
+			z-index: 114514;
 			width: 100%;
 			height: 100%;
 			/* 居中 */
@@ -280,13 +302,18 @@
 			top: 0px;
 		}
 
+		.window>h2 {
+			-webkit-user-select: none;
+			user-select: none;
+		}
+
 		.content {
 			background: #FFF;
 			padding: 10px;
 			/* 定位 */
 			position: relative;
-			width: 50%;
-			height: 50%;
+			width: 61.8%;
+			height: 61.8%;
 		}
 
 		.close-btn {
@@ -312,7 +339,11 @@
 			padding: 10px;
 			border-radius: 3px;
 			background: #EEE;
+			-webkit-user-select: none;
 			user-select: none;
+			z-index: 1;
+			width: 50px;
+			text-align: center;
 		}
 
 		.menu>div {
@@ -321,6 +352,7 @@
 			background: #EEE;
 			padding: 10px;
 			border-radius: 3px;
+			transition: .2s ease;
 		}
 
 		.menu>div>div {
@@ -339,12 +371,12 @@
 			width: 100%;
 			height: auto;
 			padding: 10px;
-			z-index: 2;
+			z-index: 1919810;
 			display: none;
 			background: #b5ffb1;
 		}
 
-		/*修改操作模式*/
+		/* 修改操作模式 */
 		#mode {
 			width: 100%;
 			height: 50px;
@@ -365,10 +397,14 @@
 			padding: 5px;
 			border-radius: 3px;
 			margin: 1px 1px 1px 1px;
+			-webkit-user-select: none;
 			user-select: none;
+			height: 20px;
+			margin-top: 10px;
 		}
 
 		select {
+			-webkit-user-select: none;
 			user-select: none;
 		}
 
@@ -384,25 +420,73 @@
 			border: 1px solid #BBB;
 			padding: 10px;
 		}
-		.bpmlist-show > input {
+
+		.bpmlist-show>input {
 			height: 15px;
 		}
 
+		/* 下拉框 */
+		#line-selector {
+			-webkit-user-select: none;
+			user-select: none;
+		}
+
+		#line-selected {
+			border: 1px solid;
+			padding: 5px;
+		}
+
+		ul {
+			display: block;
+			position: absolute;
+			background: rgb(255, 255, 255);
+			margin-top: 0px;
+			border: 1px solid;
+			overflow: auto;
+			max-height: 70%;
+			list-style: none;
+			padding: 0px;
+		}
+
+		li {
+			border: 1px solid;
+			padding: 5px;
+			transition: .2s ease;
+			-webkit-user-select: none;
+			user-select: none;
+		}
+
+		li:hover {
+			background-color: #DDD;
+		}
+
+		/* 滚动条 */
 		#scrollbar {
 			height: 30px;
 			width: 12px;
 			background: #AAA;
 		}
+
 		#scrollbar-container {
 			width: 12px;
 			border: 1px solid #000;
 		}
-	</style>
-	<script src="math.js"></script>
-	<script src="data.js"></script>
-	<script src="main.js"></script>
-	<script src="renderer.js"></script>
 
+		/* 右键菜单 */
+		#contextmenu {
+			position: fixed;
+			z-index: 114514;
+			background: #FFF;
+			padding: 10px;
+			display: none;
+		}
+	</style>
+	<script src="./src/math.js"></script>
+	<script src="./src/note.js"></script>
+	<script src="./src/data.js"></script>
+	<script src="./src/main.js"></script>
+	<script src="./src/renderer.js"></script>
+	<script src="./src/contextmenu.js"></script>
 </body>
 
 </html>
